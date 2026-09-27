@@ -24,7 +24,16 @@ def get_config():
         "model_basename": "tmodel_",
         "preload": "latest",
         "tokenizer_file": "tokenizer_{0}.json",
-        "experiment_name": "runs/tmodel"
+        "experiment_name": "runs/tmodel",
+        # seed for the train/val split so held-out scores are reproducible
+        "seed": 42,
+        # 'none' = constant lr (what this checkpoint was trained with)
+        # 'noam' = "Attention Is All You Need" schedule (opt-in: only safe when
+        #         training from scratch, it would crush the lr on a resume)
+        "lr_schedule": "none",
+        "warmup_steps": 4000,
+        # how many validation sentences to decode+score at the end of an epoch
+        "val_samples": 200,
     }
 
 def _join_model_path(model_folder: str, filename: str) -> str:

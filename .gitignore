@@ -28,6 +28,9 @@ weights/
 *_weights/
 tokenizer_*.json
 runs/
+*_runs/
+*_runs-*_*/
+*_runs-*/
 *.pt
 !venv/**/*.pt
 
