@@ -2,6 +2,7 @@ from model import build_transformer
 from dataset import BilingualDataset, causal_mask
 from config import get_config, get_weights_file_path, latest_weights_file_path
 
+import csv
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader, random_split
@@ -10,6 +11,7 @@ import warnings
 import math
 import random
 import re
+import time
 from collections import Counter
 from tqdm import tqdm
 import os
@@ -24,6 +26,30 @@ from tokenizers.pre_tokenizers import Whitespace
 
 import torchmetrics
 from torch.utils.tensorboard import SummaryWriter
+
+# One row per epoch, appended and flushed immediately. TensorBoard is a
+# debugging aid; this file is the durable record, so a Colab disconnect cannot
+# lose an epoch of metrics.
+METRICS_CSV = "training_metrics.csv"
+METRICS_FIELDS = ['epoch', 'global_step', 'train_loss', 'bleu4', 'bp',
+                  'p1', 'p2', 'p3', 'p4', 'cer', 'wer', 'n_val_sentences',
+                  'minutes']
+
+
+def append_metrics_row(path, row):
+    """Append one epoch's metrics to `path` as CSV, creating the header if needed.
+
+    Opened and closed per call, so the row is on disk before the next epoch
+    starts. If the process dies mid-training, everything up to the previous
+    epoch is still readable with no TensorBoard and no Python.
+    """
+    new_file = not os.path.exists(path)
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    with open(path, 'a', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=METRICS_FIELDS)
+        if new_file:
+            writer.writeheader()
+        writer.writerow({k: row.get(k, '') for k in METRICS_FIELDS})
 
 
 # --- Self-contained corpus BLEU-n -------------------------------------------------
@@ -167,18 +193,18 @@ def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, 
 
         print_msg('-'*console_width)
 
+    # Metrics are computed unconditionally, so the caller can log them to the
+    # crash-proof metrics file even when there is no TensorBoard writer.
+    cer = float(torchmetrics.CharErrorRate()(predicted, expected))
+    wer = float(torchmetrics.WordErrorRate()(predicted, expected))
+    bleu, precisions, bp = corpus_bleu(predicted, expected)
+    precisions = [float(p) for p in precisions]
+
     if writer:
-        # Character error rate over the whole decoded sample
-        cer = torchmetrics.CharErrorRate()(predicted, expected)
         writer.add_scalar('validation cer', cer, global_step)
-
-        # Word error rate over the whole decoded sample
-        wer = torchmetrics.WordErrorRate()(predicted, expected)
         writer.add_scalar('validation wer', wer, global_step)
-
-        # BLEU-n over the whole decoded sample, using the self-contained
-        # implementation (torchmetrics' BLEUScore is broken in this env)
-        bleu, precisions, bp = corpus_bleu(predicted, expected)
+        # BLEU-n from the self-contained implementation; torchmetrics'
+        # BLEUScore returns 0.0 in this environment
         writer.add_scalar('validation BLEU', bleu, global_step)
         for n, p in enumerate(precisions, start=1):
             writer.add_scalar(f'validation BLEU p{n}', p, global_step)
@@ -186,10 +212,22 @@ def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, 
         writer.add_scalar('validation sample size', len(predicted), global_step)
         writer.flush()
 
-        print_msg(f"validation on {len(predicted)} sentences: "
-                  f"BLEU-4 = {bleu:.2f}  BP = {bp:.3f}  "
-                  f"precisions = {'/'.join(f'{p*100:.1f}' for p in precisions)}  "
-                  f"CER = {cer.item():.3f}  WER = {wer.item():.3f}")
+    print_msg(f"validation on {len(predicted)} sentences: "
+              f"BLEU-4 = {bleu:.2f}  BP = {bp:.3f}  "
+              f"precisions = {'/'.join(f'{p*100:.1f}' for p in precisions)}  "
+              f"CER = {cer:.3f}  WER = {wer:.3f}")
+
+    return {
+        'bleu4': bleu,
+        'p1': precisions[0],
+        'p2': precisions[1],
+        'p3': precisions[2],
+        'p4': precisions[3],
+        'bp': bp,
+        'cer': cer,
+        'wer': wer,
+        'n_sentences': len(predicted),
+    }
 
 
 def get_all_sentences(ds, lang):
@@ -347,6 +385,9 @@ def train_model(config):
     for epoch in range(initial_epoch, config['num_epochs']):
         torch.cuda.empty_cache()
         model.train()
+        epoch_start = time.time()
+        loss_sum = 0.0
+        n_batches = 0
         batch_iterator = tqdm(train_dataloader, desc=f"Processing Epoch {epoch:02d}")
         for batch in batch_iterator:
 
@@ -366,6 +407,8 @@ def train_model(config):
             # Compute the loss using a simple cross entropy
             loss = loss_fn(proj_output.view(-1, tokenizer_tgt.get_vocab_size()), label.view(-1))
             batch_iterator.set_postfix({"loss": f"{loss.item():6.3f}"})
+            loss_sum += loss.item()
+            n_batches += 1
 
             # Log the loss
             writer.add_scalar('train loss', loss.item(), global_step)
@@ -382,7 +425,7 @@ def train_model(config):
             global_step += 1
 
         # Run validation at the end of every epoch
-        run_validation(model, val_dataloader, tokenizer_src, tokenizer_tgt, config['seq_len'], device, lambda msg: batch_iterator.write(msg), global_step, writer, val_samples=val_samples)
+        val = run_validation(model, val_dataloader, tokenizer_src, tokenizer_tgt, config['seq_len'], device, lambda msg: batch_iterator.write(msg), global_step, writer, val_samples=val_samples)
 
         # Save the model at the end of every epoch
         model_filename = get_weights_file_path(config, f"{epoch:02d}")
@@ -392,6 +435,25 @@ def train_model(config):
             'optimizer_state_dict': optimizer.state_dict(),
             'global_step': global_step
         }, model_filename)
+
+        # Durable per-epoch record, written *after* the checkpoint so a row only
+        # exists for an epoch that actually completed and was saved.
+        append_metrics_row(config['metrics_file'], {
+            'epoch': epoch,
+            'global_step': global_step,
+            'train_loss': round(loss_sum / max(n_batches, 1), 4),
+            'bleu4': round(val['bleu4'], 4),
+            'bp': round(val['bp'], 4),
+            'p1': round(val['p1'], 4),
+            'p2': round(val['p2'], 4),
+            'p3': round(val['p3'], 4),
+            'p4': round(val['p4'], 4),
+            'cer': round(val['cer'], 4),
+            'wer': round(val['wer'], 4),
+            'n_val_sentences': val['n_sentences'],
+            'minutes': round((time.time() - epoch_start) / 60, 1),
+        })
+        print(f"epoch {epoch:02d} logged to {config['metrics_file']}")
 
 
 if __name__ == '__main__':

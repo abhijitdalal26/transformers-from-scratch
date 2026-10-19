@@ -1,14 +1,17 @@
 from pathlib import Path, PurePosixPath
 
+# Every local path below is anchored to this file, not to the working
+# directory, so `python tools/evaluate.py` behaves the same from anywhere.
+PROJECT_DIR = Path(__file__).resolve().parent
+
+
 def _model_dir(config):
-    # Public repo is Helsinki-NLP/opus_books; keep local folder as opus_books_weights for backward compat
-    # and respect absolute Drive paths (e.g. /content/drive/... on Linux/Colab)
-    mf = config['model_folder']
-    # POSIX absolute check via string (Path.is_absolute is OS-dependent and fails for /content on Windows)
-    if mf.startswith("/") or mf.startswith("\\") or Path(mf).is_absolute():
-        return mf
-    ds_base = config['datasource'].split("/")[-1]
-    return f"{ds_base}_{mf}"
+    # The trained checkpoint, its tokenizers and the model card live together in
+    # model/. Colab overrides model_folder with an absolute Drive path
+    # (e.g. /content/drive/MyDrive/transformers-from-scratch_weights), which is
+    # used verbatim.
+    return config['model_folder']
+
 
 def get_config():
     return {
@@ -20,11 +23,15 @@ def get_config():
         "datasource": 'Helsinki-NLP/opus_books',
         "lang_src": "en",
         "lang_tgt": "nl",
-        "model_folder": "weights",
+        "model_folder": str(PROJECT_DIR / "model"),
         "model_basename": "tmodel_",
         "preload": "latest",
-        "tokenizer_file": "tokenizer_{0}.json",
-        "experiment_name": "runs/tmodel",
+        "tokenizer_file": str(PROJECT_DIR / "model" / "tokenizer_{0}.json"),
+        "experiment_name": str(PROJECT_DIR / "runs" / "tmodel"),
+        # Durable per-epoch metrics (CSV). TensorBoard is for watching a run
+        # live; this is the record that survives a disconnect, so the peak
+        # epoch can always be identified after the fact.
+        "metrics_file": str(PROJECT_DIR / "results" / "wordlevel" / "training_metrics.csv"),
         # seed for the train/val split so held-out scores are reproducible
         "seed": 42,
         # 'none' = constant lr (what this checkpoint was trained with)
@@ -47,7 +54,7 @@ def get_weights_file_path(config, epoch: str):
     model_filename = f"{config['model_basename']}{epoch}.pt"
     return _join_model_path(model_folder, model_filename)
 
-# Find the latest weights file in the weights folder
+# Find the newest checkpoint in the model folder (model/tmodel_*.pt)
 def latest_weights_file_path(config):
     model_folder = _model_dir(config)
     model_filename = f"{config['model_basename']}*"
@@ -57,3 +64,28 @@ def latest_weights_file_path(config):
         return None
     weights_files.sort()
     return str(weights_files[-1])
+
+
+def resolve_checkpoint(config, spec):
+    """Turn a user-supplied checkpoint spec into a path.
+
+    Accepts '17', 'tmodel_17', 'tmodel_17.pt', or any path containing a
+    separator (used verbatim, so checkpoints can live outside model/).
+    """
+    spec = str(spec)
+    if "/" in spec or "\\" in spec:
+        return spec
+    stem = spec
+    if stem.endswith(".pt"):
+        stem = stem[: -len(".pt")]
+    base = config["model_basename"]
+    if stem.startswith(base):
+        stem = stem[len(base):]
+    candidate = Path(_model_dir(config)) / f"{base}{stem}.pt"
+    if candidate.exists():
+        return str(candidate)
+    # fall back to a glob so zero-padded / unpadded names both work
+    hits = sorted(Path(_model_dir(config)).glob(f"{base}{stem.strip('0') or '0'}*.pt"))
+    if hits:
+        return str(hits[-1])
+    raise FileNotFoundError(f"No checkpoint matching {spec!r} in {_model_dir(config)}")

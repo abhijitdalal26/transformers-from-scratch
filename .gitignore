@@ -16,6 +16,9 @@ venv/
 .DS_Store
 Thumbs.db
 
+# Obsidian note-taking app state (UI layout, plugin config)
+.obsidian/
+
 # Large data files
 data/
 *.csv
@@ -23,6 +26,10 @@ data/
 *.h5
 
 # Transformer checkpoints & tokenizers
+# model/ holds the 838 MB tmodel_*.pt checkpoints and the tokenizer JSONs;
+# model_card.json is small and describes the model, so it stays tracked.
+model/*
+!model/model_card.json
 opus_books_weights/
 weights/
 *_weights/
@@ -31,6 +38,9 @@ runs/
 *_runs/
 *_runs-*_*/
 *_runs-*/
+# Colab Drive mirror. The two discarded checkpoints (tmodel_18/19.pt) are
+# dropped by the *.pt rule and the TensorBoard run dir by *_runs/, so drive/
+# is fully ignored — the event files are reproducible from a rerun on Colab.
 *.pt
 !venv/**/*.pt
 

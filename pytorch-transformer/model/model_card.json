@@ -1,0 +1,112 @@
+{
+  "name": "tmodel",
+  "task": "English -> Dutch machine translation",
+  "description": "Transformer encoder-decoder trained from scratch on Helsinki-NLP/opus_books with a WordLevel tokenizer. This is the validated best checkpoint; the run overfits from epoch 18 onward.",
+  "checkpoint": {
+    "file": "tmodel_17.pt",
+    "epoch": 17,
+    "global_step": 78282,
+    "size_bytes": 879337291,
+    "contains": [
+      "model_state_dict",
+      "optimizer_state_dict",
+      "epoch",
+      "global_step"
+    ]
+  },
+  "architecture": {
+    "d_model": 512,
+    "encoder_layers": 6,
+    "decoder_layers": 6,
+    "attention_heads": 8,
+    "d_ff": 2048,
+    "dropout": 0.1,
+    "seq_len": 350,
+    "parameters": 73496757,
+    "embedding_parameters": 18960896,
+    "embedding_share_pct": 25.8
+  },
+  "tokenizer": {
+    "type": "WordLevel",
+    "pre_tokenizer": "Whitespace",
+    "normalizer": null,
+    "min_frequency": 2,
+    "special_tokens": [
+      "[UNK]",
+      "[PAD]",
+      "[SOS]",
+      "[EOS]"
+    ],
+    "vocab_size_en": 17396,
+    "vocab_size_nl": 19637
+  },
+  "training": {
+    "dataset": "Helsinki-NLP/opus_books",
+    "pairs": 38652,
+    "split": "90/10",
+    "seed": 42,
+    "batch_size": 8,
+    "steps_per_epoch": 4349,
+    "epochs_completed": 18,
+    "lr": 0.0001,
+    "lr_schedule": "none",
+    "label_smoothing": 0.1,
+    "optimizer": "Adam (eps=1e-9)",
+    "final_train_loss": 1.8316,
+    "initial_train_loss": 9.9274,
+    "device_trained_on": "Colab T4 GPU"
+  },
+  "evaluation": {
+    "protocol": "greedy decoding, no beam search",
+    "scored_on": "held-out validation split, seeded split, first 200 sentences",
+    "metrics": {
+      "checkpoint": "tmodel_17.pt",
+      "checkpoint_epoch": 17,
+      "global_step": 78282,
+      "device": "cpu",
+      "n_sentences": 200,
+      "val_split_size": 3866,
+      "seed": 42,
+      "bleu4": 24.2076,
+      "bleu_precisions": [
+        0.5372,
+        0.285,
+        0.1824,
+        0.1294
+      ],
+      "brevity_penalty": 0.9873,
+      "cer": 0.5686,
+      "wer": 0.9196,
+      "exact_match": 0,
+      "exact_match_pct": 0.0,
+      "mean_unigram_recall": 0.5572,
+      "mean_gen_len_tokens": 24.77,
+      "empty_predictions": 0,
+      "decode_seconds_total": 307.0,
+      "decode_seconds_per_sentence": 1.54
+    }
+  },
+  "overfitting": {
+    "onset_epoch": 18,
+    "best_epoch": 17,
+    "best_bleu4": 24.2076,
+    "final_bleu4": 20.3011,
+    "note": "BLEU-4 peaked at epoch 17 and fell for the two remaining epochs while training loss kept dropping. The epoch-19 checkpoint was discarded. See results/wordlevel/RUN_REPORT.md."
+  },
+  "usage": {
+    "translate": "python translate.py \"But it was too late.\"",
+    "translate_epoch17": "python translate.py --checkpoint 17 \"The cat sleeps on the table.\"",
+    "evaluate": "python tools/evaluate.py --samples 200",
+    "compare": "python tools/compare_checkpoints.py --samples 60",
+    "novel_sentences": "python tools/novel_sentences.py --checkpoint 17",
+    "note": "preload is 'latest', so with a single checkpoint in model/ all scripts resolve to it automatically. The tools/ scripts import this project from the parent directory and can be run from any working directory. The Colab notebook overrides model_folder and tokenizer_file to point at Google Drive."
+  },
+  "known_limitations": [
+    "WordLevel tokenizer with no subwords: unseen words collapse to [UNK], and inflected forms share no representation.",
+    "No lowercasing, so 'zij' and 'Zij' are separate vocabulary entries.",
+    "~44% of the English and ~40% of the Dutch vocabulary entries are never used in the corpus.",
+    "No weight tying between the target embedding and the projection layer.",
+    "Constant learning rate, no schedule; the NoAM schedule exists but is opt-in.",
+    "No KV cache: decoding is O(n^2) in the generated length."
+  ]
+}
