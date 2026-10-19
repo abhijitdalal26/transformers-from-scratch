@@ -1,4 +1,5 @@
 from pathlib import Path, PurePosixPath
+import os
 
 # Every local path below is anchored to this file, not to the working
 # directory, so `python tools/evaluate.py` behaves the same from anywhere.
@@ -13,8 +14,31 @@ def _model_dir(config):
     return config['model_folder']
 
 
+def apply_tokenizer_variant(config):
+    """Redirect artifact paths to a tokenizer-variant-specific subfolder.
+
+    Two tokenizer variants coexist without ever touching each other's files:
+      - 'wordlevel' (default): model/, results/wordlevel/, runs/tmodel
+      - 'bpe':                 model/bpe/, results/bpe/, runs/tmodel_bpe
+
+    This is called automatically at the end of get_config(). On Colab, where
+    model_folder and tokenizer_file are overridden with Drive paths, call this
+    again *after* those overrides so the remaining paths (metrics_file,
+    experiment_name) still point at the variant's own folder.
+
+    The model_basename ('tmodel_') is intentionally unchanged — the two
+    variants are distinguished by their folder, not their filename.
+    """
+    if config.get('tokenizer_type', 'wordlevel') == 'bpe':
+        config['model_folder']    = str(PROJECT_DIR / 'model' / 'bpe')
+        config['tokenizer_file']  = str(PROJECT_DIR / 'model' / 'bpe' / 'tokenizer_{0}.json')
+        config['metrics_file']    = str(PROJECT_DIR / 'results' / 'bpe' / 'training_metrics.csv')
+        config['experiment_name'] = str(PROJECT_DIR / 'runs' / 'tmodel_bpe')
+    return config
+
+
 def get_config():
-    return {
+    config = {
         "batch_size": 8,
         "num_epochs": 1,
         "lr": 10**-4,
@@ -41,7 +65,17 @@ def get_config():
         "warmup_steps": 4000,
         # how many validation sentences to decode+score at the end of an epoch
         "val_samples": 200,
+        # Tokenizer variant: 'wordlevel' (default, baseline) or 'bpe'.
+        # Set via the TOKENIZER_TYPE environment variable — no code changes
+        # needed to switch variants. Affects only artifact paths (see
+        # apply_tokenizer_variant below); the model architecture is identical.
+        "tokenizer_type": os.environ.get("TOKENIZER_TYPE", "wordlevel"),
+        # Debug-only: set to an int (e.g. 50) to stop training after that many
+        # batches. Used for a quick local smoke test; leave as None for real runs.
+        "max_train_steps": None,
     }
+    # Remap artifact paths to the variant's own subfolder (no-op for wordlevel)
+    return apply_tokenizer_variant(config)
 
 def _join_model_path(model_folder: str, filename: str) -> str:
     # Colab Drive paths are POSIX even when tested on Windows — preserve leading /

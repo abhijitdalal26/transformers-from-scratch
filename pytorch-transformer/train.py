@@ -20,9 +20,11 @@ from pathlib import Path
 # Huggingface datasets and tokenizers
 from datasets import load_dataset
 from tokenizers import Tokenizer
-from tokenizers.models import WordLevel
-from tokenizers.trainers import WordLevelTrainer
-from tokenizers.pre_tokenizers import Whitespace
+from tokenizers.models import WordLevel, BPE
+from tokenizers.trainers import WordLevelTrainer, BpeTrainer
+from tokenizers.pre_tokenizers import Whitespace, ByteLevel as ByteLevelPreTok
+from tokenizers.decoders import ByteLevel as ByteLevelDecoder
+from tokenizers.normalizers import Lowercase, Sequence
 
 import torchmetrics
 from torch.utils.tensorboard import SummaryWriter
@@ -236,16 +238,66 @@ def get_all_sentences(ds, lang):
 
 
 def get_or_build_tokenizer(config, ds, lang):
+    """Build (or load from disk) the tokenizer for one language.
+
+    Two variants, selected by config['tokenizer_type'] (set via TOKENIZER_TYPE env var):
+
+    - 'wordlevel' (default): one token per whole word. Simple, but any word not
+      seen during training becomes [UNK] — this is the known limitation we are
+      testing BPE against.
+
+    - 'bpe': Byte-Pair Encoding — starts from bytes and repeatedly merges the
+      most frequent adjacent pair. This means:
+        * No [UNK] at inference: any byte sequence can be represented.
+        * Morphological sharing: "running", "runs", "ran" share subword pieces,
+          so the model learns patterns, not just memorized whole words.
+        * Much smaller vocab (8k vs 17-19k) → fewer embedding params, less overfitting.
+      The ByteLevel pre-tokenizer maps raw text to printable byte tokens (GPT-2
+      style); the Lowercase normalizer folds case BEFORE tokenization so "The"
+      and "the" share the same subword IDs (the word-level run wasted ~981 vocab
+      entries on case variants alone).
+    """
     tokenizer_path = Path(config['tokenizer_file'].format(lang))
-    if not Path.exists(tokenizer_path):
-        # Most code taken from: https://huggingface.co/docs/tokenizers/quicktour
+
+    if tokenizer_path.exists():
+        # Tokenizer already trained and saved — just load it (fast path)
+        return Tokenizer.from_file(str(tokenizer_path))
+
+    # --- No saved tokenizer yet: train one from the corpus ---
+    variant = config.get('tokenizer_type', 'wordlevel')
+
+    if variant == 'bpe':
+        # BPE tokenizer: ByteLevel pre-tokenizer + Lowercase normalizer.
+        # unk_token is still [UNK] (same special-token order as wordlevel so
+        # dataset.py's token_to_id calls work unchanged), but in practice it
+        # is almost never emitted because BPE can represent any byte sequence.
+        tokenizer = Tokenizer(BPE(unk_token="[UNK]"))
+        tokenizer.normalizer = Sequence([Lowercase()])
+        tokenizer.pre_tokenizer = ByteLevelPreTok(add_prefix_space=False)
+        tokenizer.decoder = ByteLevelDecoder()  # decode IDs back to readable text
+        trainer = BpeTrainer(
+            vocab_size=8000,               # target vocab size (includes byte alphabet + specials)
+            min_frequency=2,               # ignore pairs seen only once
+            special_tokens=["[UNK]", "[PAD]", "[SOS]", "[EOS]"],
+            show_progress=True,
+        )
+    else:
+        # Original word-level tokenizer (baseline — unchanged behavior)
         tokenizer = Tokenizer(WordLevel(unk_token="[UNK]"))
         tokenizer.pre_tokenizer = Whitespace()
-        trainer = WordLevelTrainer(special_tokens=["[UNK]", "[PAD]", "[SOS]", "[EOS]"], min_frequency=2)
-        tokenizer.train_from_iterator(get_all_sentences(ds, lang), trainer=trainer)
-        tokenizer.save(str(tokenizer_path))
-    else:
-        tokenizer = Tokenizer.from_file(str(tokenizer_path))
+        trainer = WordLevelTrainer(
+            special_tokens=["[UNK]", "[PAD]", "[SOS]", "[EOS]"],
+            min_frequency=2,
+        )
+
+    # Train on all sentences for this language (generator = memory efficient)
+    tokenizer.train_from_iterator(get_all_sentences(ds, lang), trainer=trainer)
+
+    # Ensure the output directory exists (e.g. model/bpe/ may not exist yet)
+    tokenizer_path.parent.mkdir(parents=True, exist_ok=True)
+    tokenizer.save(str(tokenizer_path))
+    print(f"  [{variant}] tokenizer for '{lang}' saved to {tokenizer_path} "
+          f"(vocab size = {tokenizer.get_vocab_size()})")
     return tokenizer
 
 
@@ -381,6 +433,8 @@ def train_model(config):
     print(f"LR schedule = {config.get('lr_schedule', 'none')}, current LR = {cur_lr:.3e}")
 
     val_samples = config.get('val_samples', 200)
+    # Debug-only: if set, stop after this many batches (used for quick smoke tests)
+    max_train_steps = config.get('max_train_steps', None)
 
     for epoch in range(initial_epoch, config['num_epochs']):
         torch.cuda.empty_cache()
@@ -423,6 +477,11 @@ def train_model(config):
             optimizer.zero_grad(set_to_none=True)
 
             global_step += 1
+
+            # Debug smoke-test exit: stop after max_train_steps batches
+            if max_train_steps is not None and global_step >= max_train_steps:
+                print(f"\n[smoke test] stopping after {max_train_steps} steps (max_train_steps set)")
+                break
 
         # Run validation at the end of every epoch
         val = run_validation(model, val_dataloader, tokenizer_src, tokenizer_tgt, config['seq_len'], device, lambda msg: batch_iterator.write(msg), global_step, writer, val_samples=val_samples)
