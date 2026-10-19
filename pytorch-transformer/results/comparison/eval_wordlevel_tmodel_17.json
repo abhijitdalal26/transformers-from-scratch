@@ -1,0 +1,148 @@
+{
+  "variant": "wordlevel",
+  "checkpoint": "D:\\AI-ML-stuff\\LLM\\neural-network-projects\\pytorch-transformer\\model\\tmodel_17.pt",
+  "checkpoint_epoch": 17,
+  "global_step": 78282,
+  "params_M": 73.14,
+  "vocab_src": 17396,
+  "vocab_tgt": 19637,
+  "n_sentences": 200,
+  "cased": {
+    "bleu4": 24.2076,
+    "precisions": [
+      0.5372,
+      0.285,
+      0.1824,
+      0.1294
+    ],
+    "bp": 0.9873,
+    "cer": 0.5686,
+    "wer": 0.9196,
+    "exact": 0
+  },
+  "case_blind": {
+    "bleu4": 24.4271,
+    "precisions": [
+      0.5421,
+      0.2882,
+      0.1838,
+      0.1305
+    ],
+    "bp": 0.9873,
+    "cer": 0.5671,
+    "wer": 0.9175,
+    "exact": 0
+  },
+  "mean_gen_len_tokens": 24.77,
+  "mean_gen_len_words": 24.2,
+  "mean_ref_len_words": 21.02,
+  "mean_src_len_tokens": 24.88,
+  "ref_unk_rate_tgt": 0.016035,
+  "src_unk_rate": 0.012661,
+  "repeated_4gram_sentences": 9,
+  "empty_predictions": 0,
+  "decode_seconds_total": 839.7,
+  "novel_outputs": [
+    {
+      "en": "The cat sleeps on the table.",
+      "ref": "De kat slaapt op de tafel.",
+      "out": "De kat , die aan de tafel stond ."
+    },
+    {
+      "en": "I drink coffee every morning.",
+      "ref": "Ik drink elke morgen koffie.",
+      "out": "Ik drinken iedere ."
+    },
+    {
+      "en": "She does not like fish.",
+      "ref": "Zij houdt niet van vis.",
+      "out": "Zij doet er niet toe ."
+    },
+    {
+      "en": "We were very happy yesterday.",
+      "ref": "Wij waren gisteren zeer gelukkig.",
+      "out": "Wij waren gisteren al zeer gelukkig ."
+    },
+    {
+      "en": "The book is on the shelf.",
+      "ref": "Het boek ligt op de plank.",
+      "out": "Het boek ligt op den heuvel ."
+    },
+    {
+      "en": "He is taller than his brother.",
+      "ref": "Hij is langer dan zijn broer.",
+      "out": "Hij is veel grooter dan zijn broer ."
+    },
+    {
+      "en": "What are you doing?",
+      "ref": "Wat doe je?",
+      "out": "Wat doet u dat ?"
+    },
+    {
+      "en": "Where is the station?",
+      "ref": "Waar is het station?",
+      "out": "Waar is het station ?"
+    },
+    {
+      "en": "I have two brothers and one sister.",
+      "ref": "Ik heb twee broers en een zuster.",
+      "out": "Ik heb twee broeders en een zuster ."
+    },
+    {
+      "en": "The weather is cold today.",
+      "ref": "Het weer is koud vandaag.",
+      "out": "Het is vandaag koud ."
+    },
+    {
+      "en": "They will come to the party.",
+      "ref": "Zij zullen naar het feest komen.",
+      "out": "Zij zullen het aan iedereen komen ."
+    },
+    {
+      "en": "This is a very interesting book.",
+      "ref": "Dit is een zeer interessant boek.",
+      "out": "Dit is een mooie boek ."
+    },
+    {
+      "en": "The child is playing in the garden.",
+      "ref": "Het kind speelt in de tuin.",
+      "out": "Het kind is in den tuin ."
+    },
+    {
+      "en": "I do not understand this word.",
+      "ref": "Ik begrijp dit woord niet.",
+      "out": "Ik begrijp het niet ."
+    },
+    {
+      "en": "The man who came yesterday is my friend.",
+      "ref": "De man die gisteren kwam is mijn vriend.",
+      "out": "De man , die gisteren is , is reeds mijn vriend !"
+    },
+    {
+      "en": "Please open the window.",
+      "ref": "Open alsjeblieft het raam.",
+      "out": "Het raam is goed ."
+    },
+    {
+      "en": "The colour of the sky is blue.",
+      "ref": "De kleur van de hemel is blauw.",
+      "out": "De kleur van het uitspansel ."
+    },
+    {
+      "en": "Water boils at one hundred degrees.",
+      "ref": "Water kookt bij honderd graden.",
+      "out": "Water uit honderd graad ."
+    },
+    {
+      "en": "She gave me a beautiful gift.",
+      "ref": "Zij gaf mij een prachtig geschenk.",
+      "out": "Zij gaf mij een lief meisje ."
+    },
+    {
+      "en": "I have never seen such a large dog.",
+      "ref": "Ik heb nog nooit zo'n grote hond gezien.",
+      "out": "Ik heb nooit zulk een hond gezien ."
+    }
+  ],
+  "novel_hits_ge50pct": 16
+}

@@ -1,0 +1,246 @@
+{
+  "wordlevel": [
+    {
+      "en": "The cat sleeps on the table.",
+      "ref": "De kat slaapt op de tafel.",
+      "out": "De kat , die aan de tafel stond .",
+      "probe": "simple subject-verb-object"
+    },
+    {
+      "en": "I drink coffee every morning.",
+      "ref": "Ik drink elke morgen koffie.",
+      "out": "Ik drinken iedere .",
+      "probe": "frequency + habitual"
+    },
+    {
+      "en": "She does not like fish.",
+      "ref": "Zij houdt niet van vis.",
+      "out": "Zij doet er niet toe .",
+      "probe": "negation"
+    },
+    {
+      "en": "We were very happy yesterday.",
+      "ref": "Wij waren gisteren zeer gelukkig.",
+      "out": "Wij waren gisteren al zeer gelukkig .",
+      "probe": "past tense + intensifier"
+    },
+    {
+      "en": "The book is on the shelf.",
+      "ref": "Het boek ligt op de plank.",
+      "out": "Het boek ligt op den heuvel .",
+      "probe": "locative"
+    },
+    {
+      "en": "He is taller than his brother.",
+      "ref": "Hij is langer dan zijn broer.",
+      "out": "Hij is veel grooter dan zijn broer .",
+      "probe": "comparative"
+    },
+    {
+      "en": "What are you doing?",
+      "ref": "Wat doe je?",
+      "out": "Wat doet u dat ?",
+      "probe": "question"
+    },
+    {
+      "en": "Where is the station?",
+      "ref": "Waar is het station?",
+      "out": "Waar is het station ?",
+      "probe": "question + place"
+    },
+    {
+      "en": "I have two brothers and one sister.",
+      "ref": "Ik heb twee broers en een zuster.",
+      "out": "Ik heb twee broeders en een zuster .",
+      "probe": "numbers + family"
+    },
+    {
+      "en": "The weather is cold today.",
+      "ref": "Het weer is koud vandaag.",
+      "out": "Het is vandaag koud .",
+      "probe": "weather expression"
+    },
+    {
+      "en": "They will come to the party.",
+      "ref": "Zij zullen naar het feest komen.",
+      "out": "Zij zullen het aan iedereen komen .",
+      "probe": "future tense"
+    },
+    {
+      "en": "This is a very interesting book.",
+      "ref": "Dit is een zeer interessant boek.",
+      "out": "Dit is een mooie boek .",
+      "probe": "attributive adjective"
+    },
+    {
+      "en": "The child is playing in the garden.",
+      "ref": "Het kind speelt in de tuin.",
+      "out": "Het kind is in den tuin .",
+      "probe": "present continuous"
+    },
+    {
+      "en": "I do not understand this word.",
+      "ref": "Ik begrijp dit woord niet.",
+      "out": "Ik begrijp het niet .",
+      "probe": "negation + separable verb"
+    },
+    {
+      "en": "The man who came yesterday is my friend.",
+      "ref": "De man die gisteren kwam is mijn vriend.",
+      "out": "De man , die gisteren is , is reeds mijn vriend !",
+      "probe": "relative clause"
+    },
+    {
+      "en": "Please open the window.",
+      "ref": "Open alsjeblieft het raam.",
+      "out": "Het raam is goed .",
+      "probe": "polite imperative"
+    },
+    {
+      "en": "The colour of the sky is blue.",
+      "ref": "De kleur van de hemel is blauw.",
+      "out": "De kleur van het uitspansel .",
+      "probe": "nested possessives"
+    },
+    {
+      "en": "Water boils at one hundred degrees.",
+      "ref": "Water kookt bij honderd graden.",
+      "out": "Water uit honderd graad .",
+      "probe": "numbers as words"
+    },
+    {
+      "en": "She gave me a beautiful gift.",
+      "ref": "Zij gaf mij een prachtig geschenk.",
+      "out": "Zij gaf mij een lief meisje .",
+      "probe": "dative + adjective"
+    },
+    {
+      "en": "I have never seen such a large dog.",
+      "ref": "Ik heb nog nooit zo'n grote hond gezien.",
+      "out": "Ik heb nooit zulk een hond gezien .",
+      "probe": "negation + superlative"
+    }
+  ],
+  "bpe": [
+    {
+      "en": "The cat sleeps on the table.",
+      "ref": "De kat slaapt op de tafel.",
+      "out": "de kat slaapt op de tafel.",
+      "probe": "simple subject-verb-object"
+    },
+    {
+      "en": "I drink coffee every morning.",
+      "ref": "Ik drink elke morgen koffie.",
+      "out": "ik heb den morgen al wat hij deed.",
+      "probe": "frequency + habitual"
+    },
+    {
+      "en": "She does not like fish.",
+      "ref": "Zij houdt niet van vis.",
+      "out": "zij zijn niet zoo visschen.",
+      "probe": "negation"
+    },
+    {
+      "en": "We were very happy yesterday.",
+      "ref": "Wij waren gisteren zeer gelukkig.",
+      "out": "wij waren gelukkig.",
+      "probe": "past tense + intensifier"
+    },
+    {
+      "en": "The book is on the shelf.",
+      "ref": "Het boek ligt op de plank.",
+      "out": "het boek is op het boek gekomen.",
+      "probe": "locative"
+    },
+    {
+      "en": "He is taller than his brother.",
+      "ref": "Hij is langer dan zijn broer.",
+      "out": "hij is veel waard dan zijn broer.",
+      "probe": "comparative"
+    },
+    {
+      "en": "What are you doing?",
+      "ref": "Wat doe je?",
+      "out": "wat doet gij?",
+      "probe": "question"
+    },
+    {
+      "en": "Where is the station?",
+      "ref": "Waar is het station?",
+      "out": "waar is het station?",
+      "probe": "question + place"
+    },
+    {
+      "en": "I have two brothers and one sister.",
+      "ref": "Ik heb twee broers en een zuster.",
+      "out": "ik heb twee broer en een zuster ook.",
+      "probe": "numbers + family"
+    },
+    {
+      "en": "The weather is cold today.",
+      "ref": "Het weer is koud vandaag.",
+      "out": "het weer is heden koud.",
+      "probe": "weather expression"
+    },
+    {
+      "en": "They will come to the party.",
+      "ref": "Zij zullen naar het feest komen.",
+      "out": "zij zullen den anderen kant komen.",
+      "probe": "future tense"
+    },
+    {
+      "en": "This is a very interesting book.",
+      "ref": "Dit is een zeer interessant boek.",
+      "out": "dit is een zeer belangwekkend boek.",
+      "probe": "attributive adjective"
+    },
+    {
+      "en": "The child is playing in the garden.",
+      "ref": "Het kind speelt in de tuin.",
+      "out": "het kind is in den tuin gekomen.",
+      "probe": "present continuous"
+    },
+    {
+      "en": "I do not understand this word.",
+      "ref": "Ik begrijp dit woord niet.",
+      "out": "ik begrijp niet.",
+      "probe": "negation + separable verb"
+    },
+    {
+      "en": "The man who came yesterday is my friend.",
+      "ref": "De man die gisteren kwam is mijn vriend.",
+      "out": "die man is gisteren aangekomen.",
+      "probe": "relative clause"
+    },
+    {
+      "en": "Please open the window.",
+      "ref": "Open alsjeblieft het raam.",
+      "out": "als het raam openging.",
+      "probe": "polite imperative"
+    },
+    {
+      "en": "The colour of the sky is blue.",
+      "ref": "De kleur van de hemel is blauw.",
+      "out": "de kleur van het hemel is een blauw flink.",
+      "probe": "nested possessives"
+    },
+    {
+      "en": "Water boils at one hundred degrees.",
+      "ref": "Water kookt bij honderd graden.",
+      "out": "water uit honderd graad.",
+      "probe": "numbers as words"
+    },
+    {
+      "en": "She gave me a beautiful gift.",
+      "ref": "Zij gaf mij een prachtig geschenk.",
+      "out": "zij gaf mij een lief, die een liefhad.",
+      "probe": "dative + adjective"
+    },
+    {
+      "en": "I have never seen such a large dog.",
+      "ref": "Ik heb nog nooit zo'n grote hond gezien.",
+      "out": "ik heb nooit zoo'n hond gezien.",
+      "probe": "negation + superlative"
+    }
+  ]
+}
