@@ -2,6 +2,10 @@
 __pycache__/
 *.pyc
 
+# Scratch output dirs (never commit)
+out/
+out-smoke-test/
+
 # Virtual environments
 venv/
 .env/
