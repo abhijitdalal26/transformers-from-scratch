@@ -1,6 +1,7 @@
 from model import build_transformer
 from dataset import BilingualDataset, causal_mask
-from config import get_config, get_weights_file_path, latest_weights_file_path
+from config import (get_config, get_weights_file_path, latest_weights_file_path,
+                    bind_metrics_to_model_folder)
 
 import csv
 import torch
@@ -399,6 +400,13 @@ def train_model(config):
     # Make sure the weights folder exists
     from config import _model_dir as _md
     Path(_md(config)).mkdir(parents=True, exist_ok=True)
+
+    # The per-epoch metrics CSV must live next to the checkpoints. On Colab
+    # that is Google Drive - a CSV written into the runtime directory is lost
+    # when the session ends, which is how the first BPE run lost 6 of its 11
+    # epoch rows. Locally the default results/<variant>/ path is kept.
+    bind_metrics_to_model_folder(config)
+    print(f"Metrics CSV: {config['metrics_file']}")
 
     train_dataloader, val_dataloader, tokenizer_src, tokenizer_tgt = get_ds(config)
     model = get_model(config, tokenizer_src.get_vocab_size(), tokenizer_tgt.get_vocab_size()).to(device)

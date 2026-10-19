@@ -37,6 +37,24 @@ def apply_tokenizer_variant(config):
     return config
 
 
+def bind_metrics_to_model_folder(config):
+    """Put the per-epoch metrics CSV next to the checkpoints.
+
+    On Colab the checkpoints live in Google Drive, so the CSV has to live
+    there too: `results/<variant>/training_metrics.csv` is inside the
+    ephemeral runtime and is lost when the session ends (exactly what
+    happened to the first BPE run - only 5 of 11 epochs survived).
+
+    Only rebinds when the model folder is OUTSIDE this project, i.e. a Drive
+    path. A local run keeps writing to results/<variant>/.
+    """
+    folder = str(config['model_folder'])
+    if folder.replace('\\', '/').startswith(str(PROJECT_DIR).replace('\\', '/')):
+        return config  # local run - keep the default location
+    config['metrics_file'] = _join_model_path(folder, 'training_metrics.csv')
+    return config
+
+
 def get_config():
     config = {
         "batch_size": 8,
