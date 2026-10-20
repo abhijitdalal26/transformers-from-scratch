@@ -1,239 +1,321 @@
-# transformers-from-scratch
+# Transformer from scratch — English → Dutch
 
-Learning transformers and LLMs by building them from scratch in PyTorch.
+One project. A full encoder-decoder Transformer, written from scratch in PyTorch,
+trained to translate English into Dutch.
 
-Each project is a complete, self-contained implementation: the architecture, the
-training loop, evaluation, and the visualisations needed to understand what the
-model actually learned.
+The point of the project was to **learn the transformer architecture** by
+implementing every part of it and watching what it actually does when you
+train it. The architecture is implemented in
+[`pytorch-transformer/model.py`](pytorch-transformer/model.py) in roughly 227
+lines, and the whole training pipeline around it in about 1,060 lines of
+Python. The dataset is small (38,652 sentence pairs), the model is small
+(73.1M parameters), and the hardware was a single Colab T4 — so this is not a
+state-of-the-art translation system. It is a complete, honest, instrumented
+implementation of the paper, plus a record of what the experiment actually
+taught.
+
+Everything else in this repository is study material: the fundamentals that
+came before the transformer, and the architectures I want to build next.
 
 ---
 
-## Status
-
-| Project | State | Notes |
-|---|---|---|
-| **Transformer (en→nl)** | **Done** | 20 epochs on `opus_books`, checkpoint + metrics + graphs in the repo. Two tokenizer variants (WordLevel vs BPE) trained and compared with one protocol — see [the final report](pytorch-transformer/results/FINAL_REPORT.md) |
-| Neural foundations | Done | Perceptron and backpropagation written by hand, no libraries |
-| LLaMA | Notes | Reference papers, implementation not started |
-
-### Transformer — English → Dutch
-
-![training dashboard](pytorch-transformer/graphs/training_dashboard.png)
+## The result
 
 | | |
 |---|---|
-| Task | English → Dutch machine translation |
-| Dataset | `Helsinki-NLP/opus_books` — 38,652 sentence pairs |
-| Split | 90 / 10, seeded (`seed=42`) so held-out scores are reproducible |
-| Architecture | 6 encoder + 6 decoder layers, 8 heads, `d_model=512`, `d_ff=2048`, dropout 0.1 |
-| Tokenizer | WordLevel (`min_frequency=2`) — 17,396 en / 19,637 nl |
-| Parameters | **73.50M** (18.96M of them embeddings) |
-| Training | 20 epochs, 86,980 steps, batch 8, constant LR 1e-4, label smoothing 0.1 |
-| Final train loss | **1.83** (started at 9.93 ≈ `ln(19637)`) |
-| **Validation BLEU-4** | **24.21** on 200 held-out sentences (`tmodel_17`) |
-| CER / WER | 0.569 / 0.920 |
-| Checkpoint | `pytorch-transformer/model/tmodel_17.pt` — 838 MB (weights + Adam moments) |
+| **Model** | `pytorch-transformer/model/tmodel_17.pt` (epoch 17, global step 78,282) |
+| **Architecture** | 6 encoder + 6 decoder layers, d_model 512, 8 heads, d_ff 2048, dropout 0.1, sinusoidal positional encoding |
+| **Parameters** | 73,138,357 |
+| **Tokenizer** | WordLevel, 17,396 English / 19,637 Dutch words, `[UNK] [PAD] [SOS] [EOS]` |
+| **Data** | `Helsinki-NLP/opus_books`, 38,652 pairs → 34,786 train / 3,866 val (seeded 90/10 split, seed 42) |
+| **Training** | 20 epochs, 4,349 steps/epoch, 86,980 steps, batch 8, Adam (eps 1e-9), constant LR 1e-4, label smoothing 0.1, Colab T4 |
+| **Scored on** | the first 200 held-out validation sentences, greedy decoding |
 
-**The model overfits after epoch 17.** BLEU peaked at **24.21** on epoch 17 and
-declined to 24.21 → 20.85 → 20.30 over the last three epochs while training loss
-kept falling. More epochs will not help; a regularisation or tokenizer change will.
-`tmodel_17` is the checkpoint kept; epochs 18 and 19 are on `drive/` as evidence.
+| Metric | Value |
+|---|---|
+| BLEU-4 (cased) | **24.2076** |
+| BLEU-4 (case-blind) | **24.4271** |
+| Precision p1 / p2 / p3 / p4 | 0.5372 / 0.2850 / 0.1824 / 0.1294 |
+| Brevity penalty | 0.9873 |
+| CER / WER | 0.5686 / 0.9196 |
+| Empty predictions | 0 / 200 |
 
-<details>
-<summary>Sample translations</summary>
+What it produces, on sentences it has never seen:
 
-| Source | Reference | Model |
+| English | Dutch (model) |
+|---|---|
+| Where is the station? | Waar is het station ? |
+| We were very happy yesterday. | Wij waren gisteren al zeer gelukkig . |
+| I have two brothers and one sister. | Ik heb twee broeders en een zuster . |
+| But it was too late. | Maar het was te laat . |
+| Joe took a pin out of his lapel … | Joe nam een speld uit de panden van zijn buisje en begon de behulpzame hand te bieden om het diertje te geven . |
+
+26 more (20 never-seen sentences plus 6 held-out ones, across four
+checkpoints) are in
+[`results/comparison/bpe_sweep/inference_showcase.md`](pytorch-transformer/results/comparison/bpe_sweep/inference_showcase.md).
+
+---
+
+## Results and artefacts
+
+The full write-up is
+[`pytorch-transformer/results/FINAL_REPORT.md`](pytorch-transformer/results/FINAL_REPORT.md).
+Everything below is a summary of what the run showed.
+
+### The overfitting curve
+
+Validation BLEU-4 rose for 17 epochs and then fell off a cliff, while the
+training loss kept going down. That gap between "it fits the training data
+better and better" and "it is getting worse at the real task" is the single
+most useful thing this project produced.
+
+| Epoch | BLEU-4 | CER | WER | train loss |
+|---|---|---|---|---|
+| **17** | **24.21** | 0.569 | 0.920 | ~2.5, falling |
+| 18 | 20.85 | 0.580 | 0.921 | falling |
+| 19 | 20.30 | 0.591 | 0.937 | 1.83 |
+
+BLEU fell 3.91 points (16% relative) over the last two epochs. The precisions
+show *how* it degraded: p1 only dropped 2.1 points (0.5372 → 0.5160) while p4
+dropped 3.1 points, 24% relative (0.1294 → 0.0988). The model kept choosing
+the right *words* and lost the *ordering*. Generated length stayed flat
+(24.77 → 24.52), so it was not learning to give up early either.
+
+The lesson: the last two epochs of compute were wasted, and a 34,786-pair
+dataset with a 73M-parameter model is already past the point where more
+training helps. Stopping at the peak matters.
+
+### The BPE run, and what it taught
+
+I re-ran the whole experiment with a BPE tokenizer (8,000 merge-based
+subwords, 56.40M parameters) to test the hypothesis that the WordLevel
+tokenizer was the ceiling on quality. **That hypothesis was wrong, and the
+experiment is more interesting than the original project.**
+
+| | WordLevel ep17 | BPE ep9 (its own best) | BPE ep17 | BPE ep19 |
+|---|---|---|---|---|
+| BLEU-4 cased | **24.2076** | 8.5951 | 8.0134 | 7.7222 |
+| BLEU-4 case-blind | **24.4271** | 11.5511 | 10.9415 | 10.1922 |
+| generalisation gap (nats/token) | **0.474** | 1.784 | 3.779 | 4.028 |
+| source dependence | **81.2%** | 43.8% | 42.0% | 38.5% |
+
+Two independent measurements show the BPE model was **memorising**, not
+translating:
+
+1. **Generalisation gap.** Teacher-forced loss on the training set versus on
+   unseen data. WordLevel's gap is 0.474 nats/token. BPE's gap is already
+   1.784 nats/token at its *best* checkpoint — 3.8× worse — and grows to
+   4.028 (8.5×) by epoch 19 while its training loss keeps falling.
+2. **Source dependence.** Feed the encoder a shuffled or blanked-out source
+   and see how much of the score survives. WordLevel loses 81.2% of its
+   performance, so it is genuinely reading the English sentence. BPE starts at
+   43.8% and *falls monotonically* to 38.5% as it trains. The model was
+   progressively **stopping reading its input** and emitting a generic
+   average Dutch sentence instead.
+
+The tokenizer itself did its job perfectly: unknown-word rate went from
+1.27% to 0.00% on the source and 1.60% to 0.00% on the reference, and the
+vocabulary shrank from 37,033 entries to 16,000. And the comparison was
+actually *generous* to BPE, because its tokenizers were built from the whole
+corpus including the validation split (`train.py:333-334`) while the
+WordLevel tokenizer was built from the training split only.
+
+The mechanism is plain: BPE splits a word into ~1.3 pieces, so it gets
+232,016 target tokens per epoch instead of WordLevel's 205,452 — 26,564 extra
+free supervision targets per epoch on a corpus of only 34,786 pairs. More
+targets to memorise, and a vocabulary that can represent any of them.
+
+**What I take from it:** BPE is not worse, it is *underfed*. It won on every
+axis that matters for translation (no unknowns, shorter sequences, subword
+morphology) and still lost, purely because there was not enough data to
+learn it. The moment this same BPE model is trained on a million-plus pairs
+instead of 35 thousand, with a learning-rate schedule and early stopping, it
+is the one that should win — the subword vocabulary generalises to unseen
+words, and the WordLevel vocabulary structurally cannot. **The tokenizer was
+never the bottleneck. The dataset size was.**
+
+### The graphs
+
+Generated by `tools/make_graphs.py` and `tools/make_comparison_graphs.py`.
+They are local-only (see [Repository layout](#repository-layout)) and can be
+regenerated at any time.
+
+| Graph | What it shows | What it told me |
 |---|---|---|
-| But it was too late. | Doch het was te laat. | Maar het was te laat . |
-| "Yes, Ned, he had business with his bankers." | "Ja, Ned, hij moest bij zijn bankier zijn." | " Ja , Ned , hij moest zijn bankier zijn ." |
-| CHAPTER 5 Arabian Tunnel | HOOFDSTUK XXIX De Arabische Tunnel. | HOOFDSTUK XVI De Arabische tunnel . |
+| `graphs/wordlevel/train_loss.png` | per-step training loss, log scale, with the run restarts shaded | The loss never plateaued — it just kept descending. Training loss is a bad stopping signal on its own. |
+| `graphs/wordlevel/val_bleu.png` | validation BLEU-4 per epoch, best epoch marked | The peak at epoch 17, and the drop after it. The only curve that matters. |
+| `graphs/wordlevel/val_error_rates.png` | CER and WER per epoch | WER > 1.0 means it produced more wrong words than the reference had words; the model was often structurally wrong, not just lexically. |
+| `graphs/wordlevel/bleu_precisions.png` | BLEU n-gram precisions p1–p4 | Short n-grams degrade gently, long n-grams collapse. Overfitting shows up first in word *order*. |
+| `graphs/wordlevel/overfitting.png` | training loss and validation BLEU on one axis | The divergence point, visually. |
+| `graphs/wordlevel/checkpoint_comparison.png` | epochs 17 / 18 / 19 side by side | Epoch 17 tracks clause structure faithfully; epoch 19 degenerates. |
+| `graphs/wordlevel/training_dashboard.png` | the four panels above combined | The one-glance summary of the whole run. |
+| `graphs/wordlevel/attention/*.png` | attention heatmaps: encoder self-attention, decoder self-attention, cross-attention | The mechanism made visible. Self-attention shows what each head latches onto inside a language; cross-attention shows how the decoder lines up an English word with its Dutch counterpart. Reading these is the fastest way to see that the model learned structure rather than a lookup table. |
+| `graphs/bpe/*.png` | the same panel set for the BPE run | The same shape, but the validation curve peaks at epoch 9 and never comes back. |
+| `graphs/comparison/val_bleu_vs_epochs.png` | both runs' validation BLEU per epoch | The gap opens immediately and never closes. |
+| `graphs/comparison/overfitting_vs_epochs.png` | "Where each run starts overfitting" | WordLevel turns at epoch 18; BPE was already turning at its own peak, epoch 9. BPE memorised 8 epochs earlier. |
+| `graphs/comparison/memorisation_evidence.png` | teacher-forced loss per token on train vs val, per checkpoint, with the gap annotated | The bar chart version of the memorisation proof above. |
 
-The model produces grammatical Dutch and gets short sentences right, but BLEU is
-capped by the WordLevel tokenizer: with no subwords, `lopende` / `lopend` /
-`gelopen` share no representation and unseen words collapse to `[UNK]`.
+### Everything else in `results/`
 
-</details>
+| File | What is in it |
+|---|---|
+| `FINAL_REPORT.md` | the main write-up: scoreboard, which checkpoint is best, why BPE lost, the architecture walkthrough, what to do next |
+| `wordlevel/RUN_REPORT.md` | the WordLevel run in detail, epoch by epoch |
+| `wordlevel/model_card.json` | the model card: architecture, tokenizer, training config, evaluation results, known limitations |
+| `comparison/BPE_VS_WORDLEVEL.md` | the tokenizer comparison, with the correction that the best BPE checkpoint is epoch 9 |
+| `comparison/bpe_sweep/SWEEP.md` | all 8 checkpoints scored with one protocol |
+| `comparison/bpe_sweep/overfit_sweep.md` | the generalisation-gap table |
+| `comparison/bpe_sweep/source_ablation.md` | the source-dependence table |
+| `comparison/bpe_sweep/inference_showcase.md` | 26 sentences × 4 checkpoints, side by side |
+| `bpe/training_metrics.csv` | the BPE run's per-epoch metrics, and `training_metrics.NOTES.md` explaining exactly which rows are original and which were reconstructed |
+
+---
+
+## The implementation
+
+Five files, about 1,060 lines. This is the whole project.
+
+| File | Lines | What it holds |
+|---|---|---|
+| [`model.py`](pytorch-transformer/model.py) | 227 | **The transformer.** `PositionalEncoding` (sinusoidal), `InputEmbeddings`, `MultiHeadAttentionBlock`, `FeedForwardBlock`, `ResidualConnection`, `LayerNormalization`, `EncoderBlock` / `DecoderBlock`, `Encoder`, `Decoder`, `ProjectionLayer`, and the `Transformer` class that wires them together. Causal masking for the decoder, padding masks for the encoder, everything from the paper, no library. |
+| [`dataset.py`](pytorch-transformer/dataset.py) | 80 | `BilingualDataset` — tokenises the parallel corpus, adds `[SOS]`/`[EOS]`/`[PAD]`, builds the causal and padding masks, truncates over-long sentences, and yields batches. Plus `causal_mask(size)`. |
+| [`config.py`](pytorch-transformer/config.py) | 152 | Every hyperparameter in one place (d_model, layers, heads, d_ff, dropout, seq_len, LR, batch size, label smoothing, epochs) and the checkpoint-resolution logic: where weights live, which tokenizer to load, which epoch to use. Every other file anchors its paths here, so the model folder can be moved without touching anything else. |
+| [`train.py`](pytorch-transformer/train.py) | 505 | The training loop, the validation pass, greedy decoding, and the metrics. Includes a hand-written `corpus_bleu` (torchmetrics' BLEU returns 0.0 in this environment) and a per-epoch metrics CSV. |
+| [`translate.py`](pytorch-transformer/translate.py) | 97 | Single-sentence inference. Encodes once, then decodes greedily, caching the 838 MB checkpoint so repeated calls are fast. Takes a raw sentence or a dataset index, and `--checkpoint N` to pick an epoch. |
 
 ---
 
 ## Repository layout
 
 ```
-pytorch-transformer/     the en→nl Transformer (main project)
-foundation/              perceptron + backpropagation from scratch
-LLaMA/                   LLaMA 2/3 reference papers
-imgs/                    figures for foundation/README.md
+neural-network-projects/
+├── pytorch-transformer/        ← the project
+│   ├── model.py               the transformer
+│   ├── dataset.py             tokenisation + batching
+│   ├── config.py              hyperparameters + checkpoint resolution
+│   ├── train.py               training loop + validation
+│   ├── translate.py           inference
+│   ├── requirements.txt
+│   ├── colab_transformer_training.ipynb
+│   ├── results/               the tracked record: reports, metrics, samples
+│   ├── pdf/                   "Attention Is All You Need" + the paper diagrams
+│   ├── model/                 tmodel_17.pt + tokenizers      (local only)
+│   ├── drive_bpe/             BPE weights + per-epoch CSV   (local only)
+│   ├── graphs/                generated plots                (local only)
+│   ├── tools/                 analysis and plotting scripts  (local only)
+│   └── runs/                  TensorBoard event files        (local only)
+├── karpathy/                  reference material: BPE, makemore, LLaMA
+├── foundation/                perceptron + backprop notebooks
+├── LLaMA/                     LLaMA 1/2/3 papers
+└── imgs/                      figures for foundation/
 ```
 
-### `pytorch-transformer/` — Transformer
+**`pytorch-transformer/` is the project.** Everything tracked in git that
+matters lives in `results/`.
 
-**The implementation** (5 files, 774 lines — this is the model)
+**`model/`, `drive_bpe/`, `graphs/` and `tools/` are local-only.** They are
+not pushed to GitHub: `model/` holds an 838 MB checkpoint, and the other
+three are working copies of things that are either regenerable
+(`graphs/`, via `tools/make_graphs.py`) or already captured in the tracked
+results (`drive_bpe/`'s metrics CSV, which is also saved under
+`results/bpe/`). They stay on disk so the project still runs end to end.
 
-| File | What it provides |
-|---|---|
-| `model.py` | The whole architecture: `MultiHeadAttentionBlock`, `FeedForwardBlock`, `ResidualConnection`, `Encoder`/`Decoder` blocks, sinusoidal `PositionalEncoding`, and `build_transformer()`. Built so each paper equation maps to one class. |
-| `dataset.py` | `BilingualDataset` — tokenises, adds `[SOS]/[EOS]/[PAD]`, builds the padding and causal masks, and truncates over-long sentences. Also the `causal_mask()` helper used by decoding. |
-| `train.py` | Training loop (Adam, label smoothing, pad-ignored cross-entropy), greedy decode, per-epoch validation, and a self-contained `corpus_bleu()` — `torchmetrics`' BLEU returns 0.0 on this environment, so BLEU-n is computed from scratch with the standard 13a tokenizer. |
-| `translate.py` | Single-sentence inference: encodes once, then decodes greedily. Accepts a raw sentence or a dataset index, plus `--checkpoint N`. The 838 MB checkpoint is cached, so translating many sentences in one process loads it once. |
-| `config.py` | All hyperparameters in one place, plus checkpoint discovery (`latest_weights_file_path`, `resolve_checkpoint`). Every local path is anchored to this file, not the working directory. |
+### `karpathy/` — what I want to learn next
 
-**`tools/` — everything built around the model** (analysis, scoring, plotting)
+Reference material, not part of this project.
 
-These are not part of the model. They import the implementation from the parent
-directory and can be run from any working directory.
+- `minbpe/` — Andrej Karpathy's BPE written from scratch, in stages:
+  `base.py`, `basic.py`, `gpt4.py`, `regex.py`, with `lecture.md` and tests.
+  This is where I go to understand the tokenizer that beat mine, and why it
+  would win with more data.
+- `makemore_transformer.ipynb` — the decoder-only (GPT-style) transformer,
+  built character by character. This is the one to learn next: it is a
+  different animal from the encoder-decoder model in this project, since it
+  has no encoder and no cross-attention.
+- `names.txt` and `makemore.py` — the classic generative-model walkthrough.
 
-| File | What it provides |
-|---|---|
-| `tools/_paths.py` | Path bootstrap: puts the project root on `sys.path` and defines the shared output directories. Every tool imports this first. |
-| `tools/evaluate.py` | Scores a checkpoint on the held-out split: BLEU-4 + per-n precisions, CER, WER, exact-match, length stats. Writes `results/wordlevel/metrics_*.json` + `samples_*.md`. |
-| `tools/compare_checkpoints.py` | Decodes the same held-out sentences with N checkpoints, writes a side-by-side table plus `graphs/wordlevel/checkpoint_comparison.png`, and picks a per-metric and overall winner. |
-| `tools/novel_sentences.py` | 20 sentences written from scratch that appear in neither split — a fairer generalisation read than the validation score. |
-| `tools/check_inference.py` | Smoke-tests inference: single word, out-of-vocabulary, punctuation-only, 810-word input. |
-| `tools/make_graphs.py` | Rebuilds every training curve from the raw TensorBoard event files. |
-| `tools/make_attention_graphs.py` | Renders attention heatmaps (encoder, decoder, cross-attention) from the trained weights. |
-| `tools/write_model_card.py` | Regenerates `model/model_card.json` from the checkpoint, config and saved metrics. |
-| `tools/eval_variants.py` | Scores checkpoints of **either** tokenizer variant with one identical protocol (the apples-to-apples harness). |
-| `tools/bpe_sweep.py` | Sweeps every checkpoint on disk, then merges the shards into one table (`results/comparison/bpe_sweep/SWEEP.md`). |
-| `tools/overfit_diagnostic.py` / `tools/overfit_sweep.py` | Teacher-forced train-vs-val loss - the measurement that separates "memorising" from "learning". |
-| `tools/source_ablation.py` | Replaces the source sentence with noise / a blank and measures how much the model's prediction was worth the English. |
-| `tools/show_inference.py` | Translates the same sentences with several checkpoints so the models can be read, not just scored. |
-
-**Superseded notebooks** (kept for reference; the Colab notebook covers all of them)
-
-| File | Superseded by |
-|---|---|
-| `tools/attention_visual.ipynb` | `colab_transformer_training.ipynb` cells 15-22, and `tools/make_attention_graphs.py` |
-| `tools/Beam_Search.ipynb` | `colab_transformer_training.ipynb` cells 22-23 |
-| `tools/Inference.ipynb` | `translate.py` |
-
-**Results and artefacts**
-
-| Path | What it provides |
-|---|---|
-| `colab_transformer_training.ipynb` | The Colab driver — trains on a T4, streams TensorBoard live, then runs inference, attention maps and temperature sampling. Set `SKIP_TRAIN=True` to load the Drive checkpoint instead of retraining. |
-| `graphs/` | All training and attention figures (see below). |
-| `results/` | Evaluation output: metrics JSON, per-epoch `training_metrics.csv`, and tables of sample translations. |
-| `wordlevel_epoch16_samples.md` | Deep-dive on one checkpoint: vocabulary analysis, measured parameter counts, and the tokenizer flaws that cap the score. The baseline to compare a future BPE run against. |
-| `results/wordlevel/RUN_REPORT.md` | The full write-up: setup, measured parameter split, the overfitting analysis, generalisation test, and what to change next. |
-| `results/FINAL_REPORT.md` | **Start here** - the closing report: both tokenizer variants on one protocol, which checkpoint won and why, and what to do next. |
-| `results/comparison/BPE_VS_WORDLEVEL.md` | The controlled A/B: WordLevel vs BPE at a matched budget, with the measurement that explains why BPE lost. |
-| `results/comparison/bpe_sweep/SWEEP.md` | Every checkpoint on disk scored with one identical protocol (which one is actually best). |
-| `model/` | The trained model: `tmodel_17.pt` (the validated best checkpoint), `tokenizer_en.json` / `tokenizer_nl.json`, and `model_card.json`. The `.pt` and tokenizer JSONs are git-ignored; the model card is tracked. |
-| `drive/` | Colab Drive mirror. Holds the TensorBoard event files (the source of truth for every training graph) and the discarded `tmodel_18.pt` / `tmodel_19.pt` checkpoints. |
-| `drive/transformers-from-scratch_runs/` | Raw TensorBoard event files. These are the source of truth for every training graph. |
-
-**Reference**
-
-| File | What it provides |
-|---|---|
-| `pdf/Attention Is All You Need.pdf` | The original Vaswani et al. 2017 paper that this implementation follows. |
-| `pdf/Diagrams_V2.pdf` | Umar Jamil's illustrated "Transformer from scratch" notes — the visual companion to this code, in the same order as the classes in `model.py`. |
-
-### `graphs/`
-
-| File | What it shows |
-|---|---|
-| `training_dashboard.png` | All four training plots on one page — the quickest way to see the overfitting. |
-| `train_loss.png` | Per-step training loss on a log scale, with a 500-step mean. Shaded bands are gaps in the log (the run was restarted and some event files were never uploaded). |
-| `val_bleu.png` | Validation BLEU-4 per epoch, with the best epoch marked. |
-| `val_error_rates.png` | CER and WER per epoch. |
-| `bleu_precisions.png` | Per-n precision for BLEU-1…4. |
-| `attention/attention_overview.png` | Encoder self-attention, decoder self-attention and cross-attention side by side for one real sentence. |
-| `attention/*_layer2_heads.png` | All 8 heads of a single layer, for each of the three attention types. |
-| `attention/*_layers_heads.png` | All 6 layers with heads averaged — shows how the pattern sharpens with depth. |
-
-The decoder self-attention plots are strictly lower-triangular, which is the
-causal mask working correctly. In the cross-attention plots you can see the
-alignment directly (`maatregelen` → `measures`, `nemen` → `take`).
+Together with the `LLaMA/` papers (LLaMA 1, 2 and 3), the goal is to move
+from the encoder-decoder Transformer to a decoder-only one, which is the
+architecture behind every current large language model.
 
 ### `foundation/`
 
-| File | What it provides |
-|---|---|
-| `perceptron-xor-failure-and-solution.ipynb` | A single perceptron built from scratch, shown failing on XOR, then replaced by a 2-layer MLP that solves it. Includes the loss-surface plots. |
-| `backpropagation_from_scratch.ipynb` | Forward pass, derivative chain rule and weight updates implemented by hand, then applied to Titanic survival prediction with k-fold cross-validation. |
-| `README.md` | The history: perceptron → XOR critique → AI winter → backprop. |
-
-### `LLaMA/`
-
-`LLaMA_Final.pdf`, `LLaMA_2_research_paper.pdf`, `LLaMA_3_research_paper.pdf` —
-reference papers. Implementation not started.
+Two notebooks from before the transformer: `perceptron-xor-failure-and-solution.ipynb`
+and `backpropagation_from_scratch.ipynb`. The perceptron failing on XOR and
+then being fixed with a hidden layer is the reason the multi-head attention
+and the position-wise feed-forward block are shaped the way they are — they
+are hidden layers, and the XOR notebook is where that idea was earned.
 
 ---
 
 ## Running it
 
-### Locally
-
 ```bash
-pip install -r pytorch-transformer/requirements.txt
+# 1. environment
+python -m venv venv
+venv\Scripts\activate            # venv/bin/activate on macOS/Linux
+pip install -r pytorch-transformer\requirements.txt
 
-# the model
-python pytorch-transformer/translate.py "But it was too late."
-python pytorch-transformer/translate.py --checkpoint 17 "The cat sleeps on the table."
+# 2. translate a sentence with the trained checkpoint
+cd pytorch-transformer
+python translate.py "But it was too late."
+python translate.py --checkpoint 17 "The cat sleeps on the table."
 
-# the tools (work from any directory)
-python pytorch-transformer/tools/evaluate.py --samples 200          # BLEU / CER / WER
-python pytorch-transformer/tools/novel_sentences.py --checkpoint 17  # never-seen sentences
-python pytorch-transformer/tools/compare_checkpoints.py \
-    --checkpoints pytorch-transformer/model/tmodel_17.pt \
-                  pytorch-transformer/drive/tmodel_18.pt \
-                  pytorch-transformer/drive/tmodel_19.pt
-python pytorch-transformer/tools/check_inference.py                 # edge cases
-python pytorch-transformer/tools/make_graphs.py                     # rebuild the curves
-python pytorch-transformer/tools/make_attention_graphs.py           # attention heatmaps
-python pytorch-transformer/tools/write_model_card.py                # model card
-
-# training
-python pytorch-transformer/train.py                 # writes model/tmodel_NN.pt
+# 3. train from scratch
+#    NUM_EPOCHS defaults to 1 so a stray run cannot fill the disk.
+#    Every knob below is an environment variable; see config.py.
+set NUM_EPOCHS=20 & set EARLY_STOP_PATIENCE=2 & python train.py
 ```
 
-`train.py` also appends one row per epoch to
-`results/wordlevel/training_metrics.csv`, so the peak epoch is always
-recoverable from a plain text file even if the run dies.
-```
+`config.py` is the single source of truth for the run, and every value can be
+overridden by an environment variable:
 
-### On Colab (recommended)
+| Variable | Default | What it does |
+|---|---|---|
+| `NUM_EPOCHS` | `1` | how many epochs to train |
+| `LR` | `1e-4` | learning rate |
+| `LR_SCHEDULE` | `none` | `none`, `noam` (the paper's schedule), `cosine`, or `linear_decay` |
+| `EARLY_STOP_PATIENCE` | `0` | stop after N epochs with no validation BLEU improvement (`0` = never) |
+| `KEEP_BEST` | `1` | also save the best checkpoint as `tmodel_best.pt` |
+| `SAVE_WEIGHTS_ONLY` | `0` | `1` drops the Adam moments: ~294 MB per checkpoint instead of ~838 MB |
+| `VAL_SAMPLES` | `200` | how many validation sentences to decode and score each epoch |
+| `DROPOUT`, `LABEL_SMOOTHING` | `0.1`, `0.1` | regularisation |
 
-Open `pytorch-transformer/colab_transformer_training.ipynb` → T4 GPU → Run All.
-It mounts Drive, trains with live TensorBoard, then runs inference and attention
-visualisation. Set `SKIP_TRAIN=True` to skip the ~3.5h of training and load the
-saved checkpoint instead.
+Per-epoch metrics are appended to `results/wordlevel/training_metrics.csv`,
+so the peak epoch can always be identified after the fact.
+
+The dataset (`Helsinki-NLP/opus_books`) is downloaded from Hugging Face on
+first run. `colab_transformer_training.ipynb` is the same run on a Colab T4
+with TensorBoard attached.
+
+To reproduce the analysis in `results/`, the local `tools/` directory has one
+script per question: scoring, the checkpoint sweep, the generalisation-gap
+measurement, the source ablation, the side-by-side translations, the plots
+and the attention heatmaps.
 
 ---
 
-## Known limitations
+## Where it goes next
 
-Things to fix if this model is picked up again:
+The architecture is learned and it is solid. What is missing is scale, and
+scale is a data problem, not an architecture problem:
 
-- **The tokenizer is *not* the bottleneck — that hypothesis was tested and
-  falsified.** The WordLevel tokenizer does have real flaws (below), but a
-  full ByteLevel-BPE rerun at the same budget scored **13.5 BLEU-4 lower**
-  (8.01 vs 24.21) because it memorised the training set. The binding
-  constraints are **the amount of data (34,786 pairs) and the optimisation
-  schedule (constant LR, no early stopping)**. Full write-up:
-  [`results/comparison/BPE_VS_WORDLEVEL.md`](pytorch-transformer/results/comparison/BPE_VS_WORDLEVEL.md).
-- **WordLevel still costs you score**: `min_frequency=2` and no subwords mean
-  ~44% of the English vocabulary and ~40% of the Dutch vocabulary are dead
-  entries, and any unseen word becomes `[UNK]` (`lopende` / `lopend` /
-  `gelopen` share no representation).
-- **No lowercasing.** `zij` and `Zij` are two separate vocabulary entries;
-  981 words are stored in both cases.
-- **It overfits after epoch 17.** No dropout on the embeddings, no weight
-  tying between the target embedding and the projection layer, constant LR with
-  no schedule. The NoAM schedule is implemented in `config.py` as `lr_schedule`
-  but is opt-in — switching it on mid-run would collapse the LR.
-- **Incomplete training log.** The TensorBoard event files are missing steps
-  13,186–26,094 and 43,489–73,933 (roughly epochs 3–5 and 10–17) — 46,995 of
-  86,980 steps survived, 54%. This was Colab dropping the event file when a
-  session disconnected, not a logging bug, so those steps are simply gone and
-  the true BLEU peak may be earlier than epoch 17. `tools/make_graphs.py` shades
-  the gaps. **Now fixed going forward:** `train.py` also appends one row per
-  epoch to `results/wordlevel/training_metrics.csv`, which is a plain file and
-  cannot be lost to a disconnect.
-- **`config.py` still has `num_epochs: 1`**, left over from a debug run. With
-  `preload: "latest"` and `tmodel_17.pt` in `model/`, `train.py` resolves
-  `initial_epoch = 18` and `range(18, 1)` is empty, so it is currently a no-op.
-  Set `num_epochs` to the epoch you want to train up to before resuming.
-- **No KV cache.** Decoding re-runs the whole decoder prefix each step, so
-  generation is O(n²). Fine for a 350-token sequence, wasteful in general.
+1. **More data.** 34,786 pairs is a demonstration set, not a training set. A
+   million-plus pairs of `opus_books` or `NLLB` would be the single biggest
+   lever, and it is the lever that would flip the BPE result.
+2. **Turn on the learning-rate schedule.** The NoAM schedule and a cosine
+   decay are already implemented in `config.py` (`LR_SCHEDULE=noam` or
+   `cosine`), but the checkpoint on disk was trained with a constant LR, so
+   they were never switched on. A warmup-plus-decay schedule is worth a
+   couple of BLEU on its own.
+3. **Turn on early stopping.** `EARLY_STOP_PATIENCE=2` would have stopped the
+   run at epoch 18 instead of 19, and it keeps the best checkpoint rather
+   than the last one. The run went 3 epochs past its own peak and threw away
+   16% of the score. Stopping at the peak is free.
+4. **Beam search with length normalisation.** Greedy decoding was used
+   throughout for simplicity; beam search is a few points of BLEU for very
+   little work.
+5. **Fix the tokenizer leakage** in `train.py:333-334` so the tokenizers are
+   built from the training split only.
+6. **Then move to a decoder-only model** — the `karpathy/` material, and
+   eventually a small LLaMA.
