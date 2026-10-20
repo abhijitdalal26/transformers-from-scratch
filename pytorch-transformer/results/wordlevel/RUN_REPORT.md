@@ -241,13 +241,12 @@ In priority order:
 ```bash
 cd pytorch-transformer
 python tools/evaluate.py --checkpoint tmodel_17.pt --samples 200   # BLEU/CER/WER
-python tools/compare_checkpoints.py --checkpoints \
-    model/tmodel_17.pt drive/tmodel_18.pt drive/tmodel_19.pt --samples 60
+python tools/compare_checkpoints.py --checkpoints model/tmodel_17.pt --samples 60
 python tools/novel_sentences.py --checkpoint 17                    # never-seen sentences
 python translate.py --checkpoint 17 "The cat sleeps on the table."
 python tools/make_graphs.py                                        # training curves
 python tools/make_attention_graphs.py                              # attention heatmaps
-python tools/write_model_card.py                                   # model/model_card.json
+python tools/write_model_card.py                                   # results/wordlevel/model_card.json
 ```
 
 The `tools/` scripts import the implementation from the parent directory and

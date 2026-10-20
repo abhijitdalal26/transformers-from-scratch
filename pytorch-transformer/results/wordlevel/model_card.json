@@ -12,7 +12,10 @@
       "optimizer_state_dict",
       "epoch",
       "global_step"
-    ]
+    ],
+    "path": "model/tmodel_17.pt",
+    "size_mb": 838.6,
+    "note": "The only checkpoint kept. Contains model_state_dict + optimizer_state_dict (Adam moments), so it is roughly 2x the bare weights."
   },
   "architecture": {
     "d_model": 512,
@@ -22,9 +25,10 @@
     "d_ff": 2048,
     "dropout": 0.1,
     "seq_len": 350,
-    "parameters": 73496757,
+    "parameters": 73138357,
     "embedding_parameters": 18960896,
-    "embedding_share_pct": 25.8
+    "embedding_share_pct": 25.8,
+    "parameter_note": "Measured directly from the model (sum of p.numel() over all parameters and buffers with requires_grad). The previous value 73496757 in this card was stale."
   },
   "tokenizer": {
     "type": "WordLevel",
@@ -47,14 +51,17 @@
     "seed": 42,
     "batch_size": 8,
     "steps_per_epoch": 4349,
-    "epochs_completed": 18,
+    "epochs_completed": 20,
     "lr": 0.0001,
     "lr_schedule": "none",
     "label_smoothing": 0.1,
     "optimizer": "Adam (eps=1e-9)",
     "final_train_loss": 1.8316,
     "initial_train_loss": 9.9274,
-    "device_trained_on": "Colab T4 GPU"
+    "device_trained_on": "Colab T4 GPU",
+    "epoch_range": "0-19",
+    "steps_total": 86980,
+    "final_train_loss_note": "Train loss at epoch 19, the last epoch of the run."
   },
   "evaluation": {
     "protocol": "greedy decoding, no beam search",
@@ -83,7 +90,10 @@
       "mean_gen_len_tokens": 24.77,
       "empty_predictions": 0,
       "decode_seconds_total": 307.0,
-      "decode_seconds_per_sentence": 1.54
+      "decode_seconds_per_sentence": 1.54,
+      "bleu4_case_blind": 24.4271,
+      "source_dependence_pct": 81.2,
+      "source_dependence_note": "Share of the held-out loss earned by actually reading the English source: (blank-input loss - real-input loss) / blank-input loss. The BPE run fell from 43.8 pct to 38.5 pct as it memorised."
     }
   },
   "overfitting": {
@@ -91,7 +101,8 @@
     "best_epoch": 17,
     "best_bleu4": 24.2076,
     "final_bleu4": 20.3011,
-    "note": "BLEU-4 peaked at epoch 17 and fell for the two remaining epochs while training loss kept dropping. The epoch-19 checkpoint was discarded. See results/wordlevel/RUN_REPORT.md."
+    "note": "BLEU-4 peaked at epoch 17 and fell for the last two epochs while training loss kept dropping. The epoch 18 and 19 checkpoints were deleted. See results/wordlevel/RUN_REPORT.md.",
+    "epoch_18_bleu4": 20.85
   },
   "usage": {
     "translate": "python translate.py \"But it was too late.\"",
@@ -99,7 +110,8 @@
     "evaluate": "python tools/evaluate.py --samples 200",
     "compare": "python tools/compare_checkpoints.py --samples 60",
     "novel_sentences": "python tools/novel_sentences.py --checkpoint 17",
-    "note": "preload is 'latest', so with a single checkpoint in model/ all scripts resolve to it automatically. The tools/ scripts import this project from the parent directory and can be run from any working directory. The Colab notebook overrides model_folder and tokenizer_file to point at Google Drive."
+    "note": "preload is 'latest', so with a single checkpoint in model/ all scripts resolve to it automatically. The tools/ scripts import this project from the parent directory and can be run from any working directory. The Colab notebook overrides model_folder and tokenizer_file to point at Google Drive.",
+    "checkpoint_note": "Only tmodel_17.pt remains in model/, so the scripts resolve to it automatically."
   },
   "known_limitations": [
     "WordLevel tokenizer with no subwords: unseen words collapse to [UNK], and inflected forms share no representation.",
@@ -108,5 +120,12 @@
     "No weight tying between the target embedding and the projection layer.",
     "Constant learning rate, no schedule; the NoAM schedule exists but is opt-in.",
     "No KV cache: decoding is O(n^2) in the generated length."
-  ]
+  ],
+  "comparison": {
+    "bpe_best_checkpoint": "drive_bpe/transformers-from-scratch_weights_bpe/tmodel_09.pt",
+    "bpe_best_epoch": 9,
+    "bpe_bleu4_cased": 8.5951,
+    "bpe_bleu4_case_blind": 11.5511,
+    "verdict": "The BPE run memorised from its own peak and never beat the WordLevel run. The failure was memorisation, not the tokenizer. See results/FINAL_REPORT.md."
+  }
 }

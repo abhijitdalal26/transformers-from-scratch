@@ -28,12 +28,14 @@ data/
 *.csv
 *.tsv
 *.h5
+# ...but the measured training curves are results, so they stay tracked.
+!pytorch-transformer/results/**/*.csv
+
+# Node
+node_modules/
 
 # Transformer checkpoints & tokenizers
-# model/ holds the 838 MB tmodel_*.pt checkpoints and the tokenizer JSONs;
-# model_card.json is small and describes the model, so it stays tracked.
-model/*
-!model/model_card.json
+# model/ holds the 838 MB tmodel_17.pt checkpoint and the tokenizer JSONs.
 opus_books_weights/
 weights/
 *_weights/
@@ -42,9 +44,18 @@ runs/
 *_runs/
 *_runs-*_*/
 *_runs-*/
-# Colab Drive mirror. The two discarded checkpoints (tmodel_18/19.pt) are
-# dropped by the *.pt rule and the TensorBoard run dir by *_runs/, so drive/
-# is fully ignored — the event files are reproducible from a rerun on Colab.
+# Colab Drive mirror. The discarded checkpoints are dropped by the *.pt rule
+# and the TensorBoard run dir by *_runs/, so drive/ is fully ignored — the
+# event files are reproducible from a rerun on Colab.
 *.pt
 !venv/**/*.pt
+
+# Local-only working dirs for the transformer project.
+# The tracked record of what was measured lives in pytorch-transformer/results/;
+# these four are the live working copies: the checkpoint folder, the analysis
+# scripts, the generated graphs, and the Colab Drive mirror of the BPE run.
+pytorch-transformer/model/
+pytorch-transformer/tools/
+pytorch-transformer/graphs/
+pytorch-transformer/drive_bpe/
 
