@@ -12,6 +12,56 @@ system, just a complete, instrumented implementation of the paper.
 
 ---
 
+## Repository layout
+
+```
+neural-network-projects/
+├── pytorch-transformer/        ← the project
+│   ├── model.py               the transformer
+│   ├── dataset.py             tokenisation + batching
+│   ├── config.py              hyperparameters + checkpoint resolution
+│   ├── train.py               training loop + validation
+│   ├── translate.py           inference
+│   ├── requirements.txt
+│   ├── colab_transformer_training.ipynb
+│   ├── results/               the tracked record: reports, metrics, graphs
+│   ├── pdf/                   "Attention Is All You Need" + the paper diagrams
+│   ├── model/                 tmodel_17.pt + tokenizers      (local only)
+│   ├── drive_bpe/             BPE weights + per-epoch CSV   (local only)
+│   ├── graphs/                generated plots                (local only)
+│   ├── tools/                 analysis and plotting scripts  (local only)
+│   └── runs/                  TensorBoard event files        (local only)
+├── karpathy/                  BPE from scratch, makemore
+├── LLaMA/                     LLaMA 1/2/3 papers
+└── imgs/                      figures for the foundation notebooks
+```
+
+**`pytorch-transformer/` is the project.** Everything tracked in git that
+matters lives in `results/`.
+
+**`model/`, `drive_bpe/`, `graphs/` and `tools/` are local-only.** They are
+not pushed to GitHub: `model/` holds an 838 MB checkpoint, and the other
+three are working copies of things that are either regenerable
+(`graphs/`, via `tools/make_graphs.py`) or already captured in the tracked
+results (`drive_bpe/`'s metrics CSV, which is also saved under
+`results/bpe/`). They stay on disk so the project still runs end to end.
+
+---
+
+## The Transformer model
+
+Five files make up the whole project.
+
+| File | What it holds |
+|---|---|
+| [`model.py`](pytorch-transformer/model.py) | **The transformer.** `PositionalEncoding` (sinusoidal), `InputEmbeddings`, `MultiHeadAttentionBlock`, `FeedForwardBlock`, `ResidualConnection`, `LayerNormalization`, `EncoderBlock` / `DecoderBlock`, `Encoder`, `Decoder`, `ProjectionLayer`, and the `Transformer` class that wires them together. Causal masking for the decoder, padding masks for the encoder, everything from the paper, no library. |
+| [`dataset.py`](pytorch-transformer/dataset.py) | `BilingualDataset` — tokenises the parallel corpus, adds `[SOS]`/`[EOS]`/`[PAD]`, builds the causal and padding masks, truncates over-long sentences, and yields batches. Plus `causal_mask(size)`. |
+| [`config.py`](pytorch-transformer/config.py) | Every hyperparameter in one place (d_model, layers, heads, d_ff, dropout, seq_len, LR, batch size, label smoothing, epochs) and the checkpoint-resolution logic: where weights live, which tokenizer to load, which epoch to use. Every other file anchors its paths here, so the model folder can be moved without touching anything else. |
+| [`train.py`](pytorch-transformer/train.py) | The training loop, the validation pass, greedy decoding, and the metrics. Includes a hand-written `corpus_bleu` (torchmetrics' BLEU returns 0.0 in this environment) and a per-epoch metrics CSV. |
+| [`translate.py`](pytorch-transformer/translate.py) | Single-sentence inference. Encodes once, then decodes greedily, caching the 838 MB checkpoint so repeated calls are fast. Takes a raw sentence or a dataset index, and `--checkpoint N` to pick an epoch. |
+
+---
+
 ## The result
 
 | | |
@@ -54,9 +104,6 @@ held-out validation split.
 ---
 
 ## Results and artefacts
-
-The full write-up is
-[`pytorch-transformer/results/FINAL_REPORT.md`](pytorch-transformer/results/FINAL_REPORT.md).
 
 ### The overfitting curve
 
@@ -187,68 +234,6 @@ question of why BPE lost.
 
 ---
 
-## Repository layout
-
-```
-neural-network-projects/
-├── pytorch-transformer/        ← the project
-│   ├── model.py               the transformer
-│   ├── dataset.py             tokenisation + batching
-│   ├── config.py              hyperparameters + checkpoint resolution
-│   ├── train.py               training loop + validation
-│   ├── translate.py           inference
-│   ├── requirements.txt
-│   ├── colab_transformer_training.ipynb
-│   ├── results/               the tracked record: reports, metrics, graphs
-│   ├── pdf/                   "Attention Is All You Need" + the paper diagrams
-│   ├── model/                 tmodel_17.pt + tokenizers      (local only)
-│   ├── drive_bpe/             BPE weights + per-epoch CSV   (local only)
-│   ├── graphs/                generated plots                (local only)
-│   ├── tools/                 analysis and plotting scripts  (local only)
-│   └── runs/                  TensorBoard event files        (local only)
-├── karpathy/                  BPE from scratch, makemore
-├── LLaMA/                     LLaMA 1/2/3 papers
-└── imgs/                      figures for the foundation notebooks
-```
-
-**`pytorch-transformer/` is the project.** Everything tracked in git that
-matters lives in `results/`.
-
-**`model/`, `drive_bpe/`, `graphs/` and `tools/` are local-only.** They are
-not pushed to GitHub: `model/` holds an 838 MB checkpoint, and the other
-three are working copies of things that are either regenerable
-(`graphs/`, via `tools/make_graphs.py`) or already captured in the tracked
-results (`drive_bpe/`'s metrics CSV, which is also saved under
-`results/bpe/`). They stay on disk so the project still runs end to end.
-
-### `karpathy/` — learning about BPE
-
-Reference material, not part of this project.
-
-- `minbpe/` — Andrej Karpathy's BPE written from scratch, in stages:
-  `base.py`, `basic.py`, `gpt4.py`, `regex.py`, with `lecture.md` and tests.
-  This is where I went to understand the tokenizer that beat mine, and why it
-  would win with more data.
-- `makemore_transformer.ipynb` — the decoder-only (GPT-style) transformer,
-  built character by character.
-- `names.txt` and `makemore.py` — the classic generative-model walkthrough.
-
----
-
-## The Transformer model
-
-Five files make up the whole project.
-
-| File | What it holds |
-|---|---|
-| [`model.py`](pytorch-transformer/model.py) | **The transformer.** `PositionalEncoding` (sinusoidal), `InputEmbeddings`, `MultiHeadAttentionBlock`, `FeedForwardBlock`, `ResidualConnection`, `LayerNormalization`, `EncoderBlock` / `DecoderBlock`, `Encoder`, `Decoder`, `ProjectionLayer`, and the `Transformer` class that wires them together. Causal masking for the decoder, padding masks for the encoder, everything from the paper, no library. |
-| [`dataset.py`](pytorch-transformer/dataset.py) | `BilingualDataset` — tokenises the parallel corpus, adds `[SOS]`/`[EOS]`/`[PAD]`, builds the causal and padding masks, truncates over-long sentences, and yields batches. Plus `causal_mask(size)`. |
-| [`config.py`](pytorch-transformer/config.py) | Every hyperparameter in one place (d_model, layers, heads, d_ff, dropout, seq_len, LR, batch size, label smoothing, epochs) and the checkpoint-resolution logic: where weights live, which tokenizer to load, which epoch to use. Every other file anchors its paths here, so the model folder can be moved without touching anything else. |
-| [`train.py`](pytorch-transformer/train.py) | The training loop, the validation pass, greedy decoding, and the metrics. Includes a hand-written `corpus_bleu` (torchmetrics' BLEU returns 0.0 in this environment) and a per-epoch metrics CSV. |
-| [`translate.py`](pytorch-transformer/translate.py) | Single-sentence inference. Encodes once, then decodes greedily, caching the 838 MB checkpoint so repeated calls are fast. Takes a raw sentence or a dataset index, and `--checkpoint N` to pick an epoch. |
-
----
-
 ## Running it
 
 ```bash
@@ -320,3 +305,19 @@ scale is a data problem, not an architecture problem:
    built from the training split only.
 6. **Then move to a decoder-only model** — the `makemore` transformer in
    `karpathy/`, and eventually a small LLaMA.
+
+---
+
+## Credits
+
+This project exists because of other people's teaching.
+
+- **Umar Jamil** — the course that taught me the transformer architecture from
+  scratch, and the code this project started from.
+  [Course video](https://youtu.be/ISNdQcPhsts?si=f6XcgU_cMpWwCLoO) ·
+  [original repository](https://github.com/hkproj/pytorch-transformer)
+- **Andrej Karpathy** — `minbpe/`, the BPE tokenizer written from scratch in
+  stages, which is where I learned how subword tokenization actually works,
+  and where the BPE half of this project came from.
+- **Vaswani et al. (2017)** — "Attention Is All You Need", in
+  `pytorch-transformer/pdf/`.
