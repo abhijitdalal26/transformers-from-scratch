@@ -58,8 +58,8 @@ def bind_metrics_to_model_folder(config):
 def get_config():
     config = {
         "batch_size": 8,
-        "num_epochs": 1,
-        "lr": 10**-4,
+        "num_epochs": int(os.environ.get("NUM_EPOCHS", 1)),
+        "lr": float(os.environ.get("LR", 10**-4)),
         "seq_len": 350,
         "d_model": 512,
         "datasource": 'Helsinki-NLP/opus_books',
@@ -67,7 +67,7 @@ def get_config():
         "lang_tgt": "nl",
         "model_folder": str(PROJECT_DIR / "model"),
         "model_basename": "tmodel_",
-        "preload": "latest",
+        "preload": os.environ.get("PRELOAD", "latest"),
         "tokenizer_file": str(PROJECT_DIR / "model" / "tokenizer_{0}.json"),
         "experiment_name": str(PROJECT_DIR / "runs" / "tmodel"),
         # Durable per-epoch metrics (CSV). TensorBoard is for watching a run
@@ -79,10 +79,28 @@ def get_config():
         # 'none' = constant lr (what this checkpoint was trained with)
         # 'noam' = "Attention Is All You Need" schedule (opt-in: only safe when
         #         training from scratch, it would crush the lr on a resume)
-        "lr_schedule": "none",
+        "lr_schedule": os.environ.get("LR_SCHEDULE", "none"),
         "warmup_steps": 4000,
+        # ---- knobs for the "fix the recipe" run ---------------------------
+        # cosine / linear_decay: decay the lr across the whole step budget.
+        # The scale is a function of the ABSOLUTE global step, so a run that
+        # is resumed half way continues the same decay it would have had.
+        "min_lr_scale": float(os.environ.get("MIN_LR_SCALE", 0.05)),
+        # 0 = derive from num_epochs * steps_per_epoch (set in train.py)
+        "total_steps": int(os.environ.get("TOTAL_STEPS", 0)),
+        # regularisation
+        "dropout": float(os.environ.get("DROPOUT", 0.1)),
+        "label_smoothing": float(os.environ.get("LABEL_SMOOTHING", 0.1)),
+        # stop after this many epochs without a validation BLEU improvement
+        # (0 = never stop early)
+        "early_stop_patience": int(os.environ.get("EARLY_STOP_PATIENCE", 0)),
+        # keep a copy of the best checkpoint as <basename>best.pt
+        "keep_best": int(os.environ.get("KEEP_BEST", 1)),
+        # save weights only (no Adam moments) -> ~294 MB instead of ~679 MB,
+        # so every epoch fits on disk
+        "save_weights_only": int(os.environ.get("SAVE_WEIGHTS_ONLY", 0)),
         # how many validation sentences to decode+score at the end of an epoch
-        "val_samples": 200,
+        "val_samples": int(os.environ.get("VAL_SAMPLES", 200)),
         # Tokenizer variant: 'wordlevel' (default, baseline) or 'bpe'.
         # Set via the TOKENIZER_TYPE environment variable — no code changes
         # needed to switch variants. Affects only artifact paths (see
@@ -93,7 +111,18 @@ def get_config():
         "max_train_steps": None,
     }
     # Remap artifact paths to the variant's own subfolder (no-op for wordlevel)
-    return apply_tokenizer_variant(config)
+    config = apply_tokenizer_variant(config)
+    # Explicit overrides win over everything. A checkpoint folder and the
+    # tokenizers that belong to it can live anywhere - e.g. the BPE run sits
+    # in drive_bpe/transformers-from-scratch_weights_bpe/ - and the tools
+    # need to be pointed at that pair, not at the default local folders.
+    #   MODEL_FOLDER   -> config['model_folder']   (where the .pt files live)
+    #   TOKENIZER_FILE -> config['tokenizer_file'] ({0} = 'en' or 'nl')
+    if os.environ.get("MODEL_FOLDER"):
+        config['model_folder'] = os.environ["MODEL_FOLDER"]
+    if os.environ.get("TOKENIZER_FILE"):
+        config['tokenizer_file'] = os.environ["TOKENIZER_FILE"]
+    return config
 
 def _join_model_path(model_folder: str, filename: str) -> str:
     # Colab Drive paths are POSIX even when tested on Windows — preserve leading /

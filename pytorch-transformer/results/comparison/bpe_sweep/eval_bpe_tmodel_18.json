@@ -1,0 +1,148 @@
+{
+  "variant": "bpe",
+  "checkpoint": "D:\\AI-ML-stuff\\LLM\\neural-network-projects\\pytorch-transformer\\drive_bpe\\transformers-from-scratch_weights_bpe\\tmodel_18.pt",
+  "checkpoint_epoch": 18,
+  "global_step": 82631,
+  "params_M": 56.4,
+  "vocab_src": 8000,
+  "vocab_tgt": 8000,
+  "n_sentences": 200,
+  "cased": {
+    "bleu4": 6.9364,
+    "precisions": [
+      0.3751,
+      0.1116,
+      0.0376,
+      0.0147
+    ],
+    "bp": 1.0,
+    "cer": 0.6938,
+    "wer": 0.9753,
+    "exact": 0
+  },
+  "case_blind": {
+    "bleu4": 9.6989,
+    "precisions": [
+      0.4107,
+      0.1378,
+      0.057,
+      0.0274
+    ],
+    "bp": 1.0,
+    "cer": 0.685,
+    "wer": 0.9436,
+    "exact": 3
+  },
+  "mean_gen_len_tokens": 27.75,
+  "mean_gen_len_words": 21.25,
+  "mean_ref_len_words": 21.02,
+  "mean_src_len_tokens": 27.21,
+  "ref_unk_rate_tgt": 0.0,
+  "src_unk_rate": 0.0,
+  "repeated_4gram_sentences": 9,
+  "empty_predictions": 0,
+  "decode_seconds_total": 617.0,
+  "novel_outputs": [
+    {
+      "en": "The cat sleeps on the table.",
+      "ref": "De kat slaapt op de tafel.",
+      "out": "de kat ging zitten op de tafel."
+    },
+    {
+      "en": "I drink coffee every morning.",
+      "ref": "Ik drink elke morgen koffie.",
+      "out": "ik ga morgen den goeden morgen aan."
+    },
+    {
+      "en": "She does not like fish.",
+      "ref": "Zij houdt niet van vis.",
+      "out": "zij ziet er niet zooals visch."
+    },
+    {
+      "en": "We were very happy yesterday.",
+      "ref": "Wij waren gisteren zeer gelukkig.",
+      "out": "wij waren gisteren gelukkig bepaald."
+    },
+    {
+      "en": "The book is on the shelf.",
+      "ref": "Het boek ligt op de plank.",
+      "out": "de boek is opgestaan."
+    },
+    {
+      "en": "He is taller than his brother.",
+      "ref": "Hij is langer dan zijn broer.",
+      "out": "hij is veel grooter dan zijn broeder."
+    },
+    {
+      "en": "What are you doing?",
+      "ref": "Wat doe je?",
+      "out": "wat heb je dan gedaan?"
+    },
+    {
+      "en": "Where is the station?",
+      "ref": "Waar is het station?",
+      "out": "waar is het station?"
+    },
+    {
+      "en": "I have two brothers and one sister.",
+      "ref": "Ik heb twee broers en een zuster.",
+      "out": "ik heb twee broederss en een zuster bij elkander gehad."
+    },
+    {
+      "en": "The weather is cold today.",
+      "ref": "Het weer is koud vandaag.",
+      "out": "het weer is heden koud."
+    },
+    {
+      "en": "They will come to the party.",
+      "ref": "Zij zullen naar het feest komen.",
+      "out": "ze zullen den anderen kantoor leeren."
+    },
+    {
+      "en": "This is a very interesting book.",
+      "ref": "Dit is een zeer interessant boek.",
+      "out": "dit is een zeer belangwekkend man."
+    },
+    {
+      "en": "The child is playing in the garden.",
+      "ref": "Het kind speelt in de tuin.",
+      "out": "het kind is in den tuin."
+    },
+    {
+      "en": "I do not understand this word.",
+      "ref": "Ik begrijp dit woord niet.",
+      "out": "ik begrijp dit nog niet."
+    },
+    {
+      "en": "The man who came yesterday is my friend.",
+      "ref": "De man die gisteren kwam is mijn vriend.",
+      "out": "de man die gisteren gisteren is mijn vriend, is mijn waarde vriend!"
+    },
+    {
+      "en": "Please open the window.",
+      "ref": "Open alsjeblieft het raam.",
+      "out": "och als het raam openst."
+    },
+    {
+      "en": "The colour of the sky is blue.",
+      "ref": "De kleur van de hemel is blauw.",
+      "out": "de vacantie is blauw blauwe vak."
+    },
+    {
+      "en": "Water boils at one hundred degrees.",
+      "ref": "Water kookt bij honderd graden.",
+      "out": "waterken op honderd\u00b0."
+    },
+    {
+      "en": "She gave me a beautiful gift.",
+      "ref": "Zij gaf mij een prachtig geschenk.",
+      "out": "zij gaf mij een fraai briefje."
+    },
+    {
+      "en": "I have never seen such a large dog.",
+      "ref": "Ik heb nog nooit zo'n grote hond gezien.",
+      "out": "ik heb nog nooit zulk een hond gezien."
+    }
+  ],
+  "novel_hits_ge50pct": 15
+}

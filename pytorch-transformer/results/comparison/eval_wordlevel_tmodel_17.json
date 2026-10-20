@@ -41,7 +41,7 @@
   "src_unk_rate": 0.012661,
   "repeated_4gram_sentences": 9,
   "empty_predictions": 0,
-  "decode_seconds_total": 839.7,
+  "decode_seconds_total": 662.2,
   "novel_outputs": [
     {
       "en": "The cat sleeps on the table.",

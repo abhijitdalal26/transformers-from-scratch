@@ -1,0 +1,54 @@
+[
+  {
+    "variant": "bpe",
+    "checkpoint": "tmodel_09.pt",
+    "epoch": "09",
+    "train_nats_per_token": 1.8568,
+    "val_nats_per_token": 3.6413,
+    "gap_nats_per_token": 1.7844,
+    "train_nats_per_word": 2.5728,
+    "val_nats_per_word": 5.0389,
+    "gap_nats_per_word": 2.4661,
+    "tokens": 5819,
+    "words": 4205
+  },
+  {
+    "variant": "bpe",
+    "checkpoint": "tmodel_17.pt",
+    "epoch": "17",
+    "train_nats_per_token": 0.6304,
+    "val_nats_per_token": 4.4093,
+    "gap_nats_per_token": 3.7789,
+    "train_nats_per_word": 0.8735,
+    "val_nats_per_word": 6.1017,
+    "gap_nats_per_word": 5.2283,
+    "tokens": 5819,
+    "words": 4205
+  },
+  {
+    "variant": "bpe",
+    "checkpoint": "tmodel_19.pt",
+    "epoch": "19",
+    "train_nats_per_token": 0.552,
+    "val_nats_per_token": 4.5804,
+    "gap_nats_per_token": 4.0284,
+    "train_nats_per_word": 0.7648,
+    "val_nats_per_word": 6.3385,
+    "gap_nats_per_word": 5.5737,
+    "tokens": 5819,
+    "words": 4205
+  },
+  {
+    "variant": "wordlevel",
+    "checkpoint": "tmodel_17.pt",
+    "epoch": "17",
+    "train_nats_per_token": 0.6947,
+    "val_nats_per_token": 1.1689,
+    "gap_nats_per_token": 0.4742,
+    "train_nats_per_word": 0.8671,
+    "val_nats_per_word": 1.4424,
+    "gap_nats_per_word": 0.5753,
+    "tokens": 5189,
+    "words": 4205
+  }
+]

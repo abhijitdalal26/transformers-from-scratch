@@ -1,0 +1,74 @@
+[
+  {
+    "variant": "bpe",
+    "checkpoint": "tmodel_09.pt",
+    "epoch": "09",
+    "real_nats_per_token": 3.6413,
+    "shuffled_nats_per_token": 5.8039,
+    "blank_nats_per_token": 6.4782,
+    "real_nats_per_word": 5.0389,
+    "shuffled_nats_per_word": 8.0316,
+    "blank_nats_per_word": 8.9647,
+    "source_dependence": 0.4379
+  },
+  {
+    "variant": "bpe",
+    "checkpoint": "tmodel_10.pt",
+    "epoch": "10",
+    "real_nats_per_token": 3.6005,
+    "shuffled_nats_per_token": 5.8246,
+    "blank_nats_per_token": 6.4051,
+    "real_nats_per_word": 4.9825,
+    "shuffled_nats_per_word": 8.0602,
+    "blank_nats_per_word": 8.8635,
+    "source_dependence": 0.4379
+  },
+  {
+    "variant": "bpe",
+    "checkpoint": "tmodel_12.pt",
+    "epoch": "12",
+    "real_nats_per_token": 3.7341,
+    "shuffled_nats_per_token": 6.1073,
+    "blank_nats_per_token": 6.6256,
+    "real_nats_per_word": 5.1673,
+    "shuffled_nats_per_word": 8.4515,
+    "blank_nats_per_word": 9.1688,
+    "source_dependence": 0.4364
+  },
+  {
+    "variant": "bpe",
+    "checkpoint": "tmodel_17.pt",
+    "epoch": "17",
+    "real_nats_per_token": 4.4093,
+    "shuffled_nats_per_token": 7.1472,
+    "blank_nats_per_token": 7.6086,
+    "real_nats_per_word": 6.1017,
+    "shuffled_nats_per_word": 9.8905,
+    "blank_nats_per_word": 10.5291,
+    "source_dependence": 0.4205
+  },
+  {
+    "variant": "bpe",
+    "checkpoint": "tmodel_19.pt",
+    "epoch": "19",
+    "real_nats_per_token": 4.5804,
+    "shuffled_nats_per_token": 7.4242,
+    "blank_nats_per_token": 7.4476,
+    "real_nats_per_word": 6.3385,
+    "shuffled_nats_per_word": 10.2739,
+    "blank_nats_per_word": 10.3061,
+    "source_dependence": 0.385
+  },
+  {
+    "variant": "wordlevel",
+    "checkpoint": "tmodel_17.pt",
+    "epoch": "17",
+    "real_nats_per_token": 1.1689,
+    "shuffled_nats_per_token": 5.3981,
+    "blank_nats_per_token": 6.2182,
+    "real_nats_per_word": 1.4424,
+    "shuffled_nats_per_word": 6.6613,
+    "blank_nats_per_word": 7.6733,
+    "source_dependence": 0.812
+  }
+]

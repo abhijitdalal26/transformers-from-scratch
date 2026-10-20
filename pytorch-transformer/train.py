@@ -45,9 +45,26 @@ def append_metrics_row(path, row):
     Opened and closed per call, so the row is on disk before the next epoch
     starts. If the process dies mid-training, everything up to the previous
     epoch is still readable with no TensorBoard and no Python.
+
+    A row for an epoch that is already in the file is REPLACED, not
+    duplicated: a resumed run rewrites the epochs it redoes, so the CSV keeps
+    one row per epoch.
     """
     new_file = not os.path.exists(path)
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    if not new_file:
+        try:
+            with open(path, 'r', newline='', encoding='utf-8') as f:
+                existing = list(csv.DictReader(f))
+        except Exception:
+            existing = []
+        kept = [r for r in existing if str(r.get('epoch')) != str(row.get('epoch'))]
+        if len(kept) != len(existing):
+            with open(path, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.DictWriter(f, fieldnames=METRICS_FIELDS)
+                writer.writeheader()
+                for r in kept:
+                    writer.writerow({k: r.get(k, '') for k in METRICS_FIELDS})
     with open(path, 'a', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=METRICS_FIELDS)
         if new_file:
@@ -348,7 +365,9 @@ def get_ds(config, seed=None):
 
 
 def get_model(config, vocab_src_len, vocab_tgt_len):
-    model = build_transformer(vocab_src_len, vocab_tgt_len, config["seq_len"], config['seq_len'], d_model=config['d_model'])
+    model = build_transformer(vocab_src_len, vocab_tgt_len, config["seq_len"], config['seq_len'],
+                              d_model=config['d_model'],
+                              dropout=config.get('dropout', 0.1))
     return model
 
 
@@ -358,11 +377,19 @@ def get_lr_scale(config, step):
     'none' -> constant LR (the schedule this checkpoint was trained with).
     'noam' -> the schedule from "Attention Is All You Need":
               d_model^-0.5 * min(step^-0.5, step * warmup^-1.5)
+    'cosine' -> cosine decay from 1.0 down to min_lr_scale over the whole
+                step budget of the run.
+    'linear_decay' -> same, but straight line instead of a cosine.
 
     NOTE: the noam factor is ~0.044 at peak for d_model=512, so switching it on
     for a run that is resuming at step ~74k would drop the LR by more than an
     order of magnitude and effectively freeze training. That is why it is
     opt-in and defaults to 'none'.
+
+    The decay schedules are a function of the ABSOLUTE global step and of the
+    total step budget, never of "steps since this run started". A run resumed
+    at step 43,490 of 86,980 therefore continues exactly the decay it would
+    have had if it had never been stopped.
     """
     schedule = config.get('lr_schedule', 'none')
     if schedule == 'none':
@@ -370,7 +397,18 @@ def get_lr_scale(config, step):
     d_model = config['d_model']
     warmup = config.get('warmup_steps', 4000)
     step = max(step, 1)
-    return (d_model ** -0.5) * min(step ** -0.5, step * warmup ** -1.5)
+    if schedule == 'noam':
+        return (d_model ** -0.5) * min(step ** -0.5, step * warmup ** -1.5)
+    if schedule in ('cosine', 'linear_decay'):
+        total = config.get('total_steps') or 0
+        if not total:
+            return 1.0
+        min_scale = config.get('min_lr_scale', 0.05)
+        progress = min(max(step / total, 0.0), 1.0)
+        if schedule == 'cosine':
+            return min_scale + (1.0 - min_scale) * 0.5 * (1 + math.cos(math.pi * progress))
+        return min_scale + (1.0 - min_scale) * (1.0 - progress)
+    return 1.0
 
 
 def set_lr(optimizer, config, step):
@@ -409,6 +447,11 @@ def train_model(config):
     print(f"Metrics CSV: {config['metrics_file']}")
 
     train_dataloader, val_dataloader, tokenizer_src, tokenizer_tgt = get_ds(config)
+    # The step budget of the whole run. A decay schedule is a function of the
+    # absolute global step against this budget, so it survives a resume.
+    config['steps_per_epoch'] = len(train_dataloader)
+    if not config.get('total_steps'):
+        config['total_steps'] = config['num_epochs'] * config['steps_per_epoch']
     model = get_model(config, tokenizer_src.get_vocab_size(), tokenizer_tgt.get_vocab_size()).to(device)
     # Tensorboard
     writer = SummaryWriter(config['experiment_name'])
@@ -422,18 +465,24 @@ def train_model(config):
     model_filename = latest_weights_file_path(config) if preload == 'latest' else get_weights_file_path(config, preload) if preload else None
     if model_filename:
         print(f'Preloading model {model_filename}')
-        state = torch.load(model_filename)
+        state = torch.load(model_filename, map_location=device, weights_only=False)
         model.load_state_dict(state['model_state_dict'])
         initial_epoch = state['epoch'] + 1
-        optimizer.load_state_dict(state['optimizer_state_dict'])
-        global_step = state['global_step']
+        global_step = state.get('global_step', 0)
+        if 'optimizer_state_dict' in state:
+            optimizer.load_state_dict(state['optimizer_state_dict'])
+        else:
+            # a weights-only checkpoint carries no Adam moments: Adam restarts
+            # from zero state, which is fine for a fresh schedule.
+            print('Checkpoint has no optimizer state - Adam restarts from scratch')
     else:
         print('No model to preload, starting from scratch')
 
     # ignore padding using the TARGET tokenizer's [PAD] id -- the labels come
     # from the target vocabulary, so the target [PAD] is what must be ignored
     pad_idx_tgt = tokenizer_tgt.token_to_id('[PAD]')
-    loss_fn = nn.CrossEntropyLoss(ignore_index=pad_idx_tgt, label_smoothing=0.1).to(device)
+    loss_fn = nn.CrossEntropyLoss(ignore_index=pad_idx_tgt,
+                                  label_smoothing=config.get('label_smoothing', 0.1)).to(device)
 
     # apply the LR for the step we are resuming at, so the schedule is
     # continuous across a restart
@@ -443,6 +492,9 @@ def train_model(config):
     val_samples = config.get('val_samples', 200)
     # Debug-only: if set, stop after this many batches (used for quick smoke tests)
     max_train_steps = config.get('max_train_steps', None)
+    # best-checkpoint tracking / early stopping
+    best_bleu = -1.0
+    epochs_without_improvement = 0
 
     for epoch in range(initial_epoch, config['num_epochs']):
         torch.cuda.empty_cache()
@@ -496,12 +548,28 @@ def train_model(config):
 
         # Save the model at the end of every epoch
         model_filename = get_weights_file_path(config, f"{epoch:02d}")
-        torch.save({
+        ckpt = {
             'epoch': epoch,
             'model_state_dict': model.state_dict(),
-            'optimizer_state_dict': optimizer.state_dict(),
             'global_step': global_step
-        }, model_filename)
+        }
+        if not config.get('save_weights_only'):
+            # Adam's two moments triple the file size (679 MB vs 294 MB). Only
+            # the last few epochs fit on disk with them.
+            ckpt['optimizer_state_dict'] = optimizer.state_dict()
+        torch.save(ckpt, model_filename)
+
+        # Keep the best checkpoint by validation BLEU. "The last epoch" is
+        # usually NOT the best epoch - this run memorised from epoch 10 on.
+        if config.get('keep_best') and val['bleu4'] > best_bleu:
+            best_bleu = val['bleu4']
+            best_filename = get_weights_file_path(config, 'best')
+            torch.save({'epoch': epoch, 'model_state_dict': model.state_dict(),
+                        'global_step': global_step, 'bleu4': val['bleu4']}, best_filename)
+            print(f"new best validation BLEU {best_bleu:.4f} -> saved {best_filename}")
+            epochs_without_improvement = 0
+        else:
+            epochs_without_improvement += 1
 
         # Durable per-epoch record, written *after* the checkpoint so a row only
         # exists for an epoch that actually completed and was saved.
@@ -521,6 +589,14 @@ def train_model(config):
             'minutes': round((time.time() - epoch_start) / 60, 1),
         })
         print(f"epoch {epoch:02d} logged to {config['metrics_file']}")
+
+        # Early stop: this many epochs in a row without a better validation
+        # BLEU means the run is memorising, not learning.
+        patience = config.get('early_stop_patience', 0)
+        if patience and epochs_without_improvement >= patience:
+            print(f"\n[early stop] {epochs_without_improvement} epochs without a better "
+                  f"validation BLEU (best {best_bleu:.4f}) - stopping at epoch {epoch}")
+            break
 
 
 if __name__ == '__main__':

@@ -1,0 +1,11 @@
+{
+  "variant": "wordlevel",
+  "checkpoint": "model\\tmodel_17.pt",
+  "samples_per_split": 200,
+  "train_nats_per_token": 0.797,
+  "val_nats_per_token": 1.1689,
+  "gap_nats_per_token": 0.3718,
+  "train_nats_per_word": 0.9801,
+  "val_nats_per_word": 1.4424,
+  "gap_nats_per_word": 0.4623
+}

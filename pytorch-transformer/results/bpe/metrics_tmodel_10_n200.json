@@ -1,0 +1,39 @@
+{
+  "checkpoint": "tmodel_10.pt",
+  "checkpoint_epoch": 10,
+  "global_step": 47839,
+  "n_sentences": 200,
+  "seed": 42,
+  "cased_as_logged": {
+    "bleu4": 8.3223,
+    "p": [
+      0.3824,
+      0.1216,
+      0.046,
+      0.0224
+    ],
+    "bp": 1.0,
+    "cer": 0.699,
+    "wer": 0.9955,
+    "exact": 0
+  },
+  "lowercased_case_blind": {
+    "bleu4": 11.0058,
+    "p": [
+      0.4151,
+      0.1479,
+      0.0663,
+      0.036
+    ],
+    "bp": 1.0,
+    "cer": 0.6901,
+    "wer": 0.965,
+    "exact": 2
+  },
+  "exact_matches_differing_only_by_case": 2,
+  "empty_predictions": 0,
+  "mean_gen_len_tokens": 28.59,
+  "mean_src_len_tokens": 29.21,
+  "max_src_len_tokens": 149,
+  "src_truncated_at_350": 0
+}

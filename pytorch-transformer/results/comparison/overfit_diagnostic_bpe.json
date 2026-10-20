@@ -1,0 +1,11 @@
+{
+  "variant": "bpe",
+  "checkpoint": "drive_bpe\\transformers-from-scratch_weights_bpe\\tmodel_17.pt",
+  "samples_per_split": 200,
+  "train_nats_per_token": 0.7381,
+  "val_nats_per_token": 4.4093,
+  "gap_nats_per_token": 3.6712,
+  "train_nats_per_word": 1.0297,
+  "val_nats_per_word": 6.1017,
+  "gap_nats_per_word": 5.072
+}

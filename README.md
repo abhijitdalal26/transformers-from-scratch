@@ -12,7 +12,7 @@ model actually learned.
 
 | Project | State | Notes |
 |---|---|---|
-| **Transformer (en→nl)** | **Done** | 20 epochs on `opus_books`, checkpoint + metrics + graphs in the repo |
+| **Transformer (en→nl)** | **Done** | 20 epochs on `opus_books`, checkpoint + metrics + graphs in the repo. Two tokenizer variants (WordLevel vs BPE) trained and compared with one protocol — see [the final report](pytorch-transformer/results/FINAL_REPORT.md) |
 | Neural foundations | Done | Perceptron and backpropagation written by hand, no libraries |
 | LLaMA | Notes | Reference papers, implementation not started |
 
@@ -92,6 +92,11 @@ directory and can be run from any working directory.
 | `tools/make_graphs.py` | Rebuilds every training curve from the raw TensorBoard event files. |
 | `tools/make_attention_graphs.py` | Renders attention heatmaps (encoder, decoder, cross-attention) from the trained weights. |
 | `tools/write_model_card.py` | Regenerates `model/model_card.json` from the checkpoint, config and saved metrics. |
+| `tools/eval_variants.py` | Scores checkpoints of **either** tokenizer variant with one identical protocol (the apples-to-apples harness). |
+| `tools/bpe_sweep.py` | Sweeps every checkpoint on disk, then merges the shards into one table (`results/comparison/bpe_sweep/SWEEP.md`). |
+| `tools/overfit_diagnostic.py` / `tools/overfit_sweep.py` | Teacher-forced train-vs-val loss - the measurement that separates "memorising" from "learning". |
+| `tools/source_ablation.py` | Replaces the source sentence with noise / a blank and measures how much the model's prediction was worth the English. |
+| `tools/show_inference.py` | Translates the same sentences with several checkpoints so the models can be read, not just scored. |
 
 **Superseded notebooks** (kept for reference; the Colab notebook covers all of them)
 
@@ -110,6 +115,9 @@ directory and can be run from any working directory.
 | `results/` | Evaluation output: metrics JSON, per-epoch `training_metrics.csv`, and tables of sample translations. |
 | `wordlevel_epoch16_samples.md` | Deep-dive on one checkpoint: vocabulary analysis, measured parameter counts, and the tokenizer flaws that cap the score. The baseline to compare a future BPE run against. |
 | `results/wordlevel/RUN_REPORT.md` | The full write-up: setup, measured parameter split, the overfitting analysis, generalisation test, and what to change next. |
+| `results/FINAL_REPORT.md` | **Start here** - the closing report: both tokenizer variants on one protocol, which checkpoint won and why, and what to do next. |
+| `results/comparison/BPE_VS_WORDLEVEL.md` | The controlled A/B: WordLevel vs BPE at a matched budget, with the measurement that explains why BPE lost. |
+| `results/comparison/bpe_sweep/SWEEP.md` | Every checkpoint on disk scored with one identical protocol (which one is actually best). |
 | `model/` | The trained model: `tmodel_17.pt` (the validated best checkpoint), `tokenizer_en.json` / `tokenizer_nl.json`, and `model_card.json`. The `.pt` and tokenizer JSONs are git-ignored; the model card is tracked. |
 | `drive/` | Colab Drive mirror. Holds the TensorBoard event files (the source of truth for every training graph) and the discarded `tmodel_18.pt` / `tmodel_19.pt` checkpoints. |
 | `drive/transformers-from-scratch_runs/` | Raw TensorBoard event files. These are the source of truth for every training graph. |
@@ -198,11 +206,17 @@ saved checkpoint instead.
 
 Things to fix if this model is picked up again:
 
-- **The tokenizer is the bottleneck.** WordLevel with `min_frequency=2` and no
-  subwords: ~44% of the English vocabulary and ~40% of the Dutch vocabulary are
-  dead entries, and any unseen word becomes `[UNK]`. Switching to a BPE
-  tokenizer is the single highest-value change — `wordlevel_epoch16_samples.md`
-  is the baseline to measure it against.
+- **The tokenizer is *not* the bottleneck — that hypothesis was tested and
+  falsified.** The WordLevel tokenizer does have real flaws (below), but a
+  full ByteLevel-BPE rerun at the same budget scored **13.5 BLEU-4 lower**
+  (8.01 vs 24.21) because it memorised the training set. The binding
+  constraints are **the amount of data (34,786 pairs) and the optimisation
+  schedule (constant LR, no early stopping)**. Full write-up:
+  [`results/comparison/BPE_VS_WORDLEVEL.md`](pytorch-transformer/results/comparison/BPE_VS_WORDLEVEL.md).
+- **WordLevel still costs you score**: `min_frequency=2` and no subwords mean
+  ~44% of the English vocabulary and ~40% of the Dutch vocabulary are dead
+  entries, and any unseen word becomes `[UNK]` (`lopende` / `lopend` /
+  `gelopen` share no representation).
 - **No lowercasing.** `zij` and `Zij` are two separate vocabulary entries;
   981 words are stored in both cases.
 - **It overfits after epoch 17.** No dropout on the embeddings, no weight

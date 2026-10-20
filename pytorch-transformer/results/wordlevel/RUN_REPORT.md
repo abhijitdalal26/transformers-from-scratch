@@ -220,6 +220,19 @@ In priority order:
    O(n²) in generated length.
 7. **Report a BPE-vs-WordLevel delta at matched training budget** (same 20 epochs,
    same seed, same `seq_len`), comparing at epoch 17, not epoch 19.
+   **Done - and the answer is negative.** The BPE run reached BLEU-4 8.01
+   (10.94 case-blind) at epoch 17 against 24.21 (24.43) for the WordLevel
+   model: **-13.49 BLEU-4 at matched budget**. The tokenizer's flaws are gone
+   (no `[UNK]`, 8k vocab, 56.4M vs 73.1M params) but the model memorised the
+   training set instead (val loss 4.41 vs 1.17 nats/token for the same train
+   loss of ~0.75). Full report: `../comparison/BPE_VS_WORDLEVEL.md`.
+
+   **Addendum:** the *best* BPE checkpoint is **epoch 9** (`tmodel_09.pt`,
+   BLEU-4 8.60 cased / 11.55 case-blind), not epoch 17 - the BPE run started
+   memorising at its own peak. Epoch 17 remains the right *comparison* point
+   (matched budget), but epoch 9 is the checkpoint to keep. Sweep:
+   `../comparison/bpe_sweep/SWEEP.md`. Closing report:
+   `../FINAL_REPORT.md`.
 
 ---
 

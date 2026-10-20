@@ -34,3 +34,15 @@ ATTENTION_DIR = GRAPHS_DIR / "attention"
 RUNS_DIR = PROJECT_DIR / "drive" / "transformers-from-scratch_runs" / "tmodel_en_nl"
 # the plan for the not-yet-trained BPE run
 BPE_DIR = PROJECT_DIR / "graphs" / "bpe"
+
+# ---- the BPE run (trained on Drive, evaluated) -------------------------
+# checkpoints + tokenizers + the per-epoch metrics csv
+BPE_WEIGHTS_DIR = PROJECT_DIR / "drive_bpe" / "transformers-from-scratch_weights_bpe"
+# its TensorBoard event files
+BPE_RUNS_DIR = (PROJECT_DIR / "drive_bpe" / "transformers-from-scratch_runs_bpe"
+                / "tmodel_en_nl")
+# its figures live apart from the baseline so the two runs never overwrite
+# each other
+BPE_GRAPHS_DIR = PROJECT_DIR / "graphs" / "bpe"
+# cross-run figures (WordLevel vs BPE)
+COMPARISON_GRAPHS_DIR = PROJECT_DIR / "graphs" / "comparison"
