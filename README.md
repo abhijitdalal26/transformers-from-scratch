@@ -318,7 +318,6 @@ This project exists because of other people's teaching.
   [original repository](https://github.com/hkproj/pytorch-transformer)
 - **Andrej Karpathy** — `minbpe/`, the BPE tokenizer written from scratch in
   stages, which is where I went to understand how subword tokenization
-  actually works. The BPE used in this project was built with the Hugging
-  Face `tokenizers` library, not with this code.
+  actually works.
 - **Vaswani et al. (2017)** — "Attention Is All You Need", in
   `pytorch-transformer/pdf/`.
