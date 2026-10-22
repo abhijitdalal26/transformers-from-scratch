@@ -1,5 +1,7 @@
 # Transformer from scratch — English → Dutch
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/abhijitdalal26/transformers-from-scratch/blob/main/pytorch-transformer/colab_transformer_training.ipynb)
+
 The point of the project was to **learn the transformer architecture** by
 implementing every part of it and watching what it actually does when you
 train it. The architecture lives in
