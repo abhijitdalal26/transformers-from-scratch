@@ -1,0 +1,26 @@
+{
+  "checkpoint": "tmodel_17.pt",
+  "checkpoint_epoch": 17,
+  "global_step": 78282,
+  "device": "cpu",
+  "n_sentences": 20,
+  "val_split_size": 3866,
+  "seed": 42,
+  "bleu4": 27.469,
+  "bleu_precisions": [
+    0.5441,
+    0.2966,
+    0.2165,
+    0.163
+  ],
+  "brevity_penalty": 1.0,
+  "cer": 0.5155,
+  "wer": 0.8422,
+  "exact_match": 0,
+  "exact_match_pct": 0.0,
+  "mean_unigram_recall": 0.5416,
+  "mean_gen_len_tokens": 23.3,
+  "empty_predictions": 0,
+  "decode_seconds_total": 179.1,
+  "decode_seconds_per_sentence": 8.96
+}
